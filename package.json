@@ -1,0 +1,30 @@
+{
+  "name": "flui",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Intent-driven, context-aware UI generation framework",
+  "license": "MIT",
+  "packageManager": "pnpm@10.30.2",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "biome check . && node ./security-check.mjs",
+    "format": "biome format . --write",
+    "size": "size-limit",
+    "changeset": "changeset"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.4",
+    "@changesets/cli": "2.29.8",
+    "@size-limit/preset-small-lib": "11.2.0",
+    "size-limit": "11.2.0",
+    "turbo": "2.8.10",
+    "vitest": "4.0.18"
+  }
+}

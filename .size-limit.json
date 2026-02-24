@@ -1,0 +1,26 @@
+[
+  {
+    "name": "@flui/core",
+    "path": "packages/core/dist/index.js",
+    "limit": "25 kB",
+    "gzip": true
+  },
+  {
+    "name": "@flui/react",
+    "path": "packages/react/dist/index.js",
+    "limit": "8 kB",
+    "gzip": true
+  },
+  {
+    "name": "@flui/openai",
+    "path": "packages/openai/dist/index.js",
+    "limit": "3 kB",
+    "gzip": true
+  },
+  {
+    "name": "@flui/anthropic",
+    "path": "packages/anthropic/dist/index.js",
+    "limit": "3 kB",
+    "gzip": true
+  }
+]

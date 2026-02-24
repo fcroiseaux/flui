@@ -1,0 +1,40 @@
+{
+  "name": "@flui/testing",
+  "version": "0.0.0",
+  "description": "Testing utilities and MockConnector for flui",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@flui/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@flui/core": "workspace:*",
+    "tsup": "8.5.1",
+    "typescript": "5.8.3",
+    "vitest": "4.0.18"
+  }
+}
