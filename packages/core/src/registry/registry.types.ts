@@ -16,6 +16,8 @@ export interface ComponentDefinition {
   accepts: z.ZodTypeAny;
   /** The component implementation (framework-agnostic, typed at adapter layer) */
   component: unknown;
+  /** Optional key-value metadata for capability/attribute querying */
+  metadata?: Record<string, unknown> | undefined;
 }
 
 /**
@@ -33,6 +35,8 @@ export interface RegistryEntry {
   accepts: z.ZodTypeAny;
   /** The component implementation (framework-agnostic, typed at adapter layer) */
   component: unknown;
+  /** Optional key-value metadata for capability/attribute querying */
+  metadata?: Record<string, unknown> | undefined;
 }
 
 /**

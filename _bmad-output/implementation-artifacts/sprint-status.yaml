@@ -52,7 +52,7 @@ development_status:
   # Epic 2: Component Registration & Discovery
   epic-2: in-progress
   2-1-register-components-with-schema-and-metadata: done
-  2-2-batch-registration-and-registry-querying: backlog
+  2-2-batch-registration-and-registry-querying: done
   2-3-registry-serialization-for-llm-prompts: backlog
   epic-2-retrospective: optional
 

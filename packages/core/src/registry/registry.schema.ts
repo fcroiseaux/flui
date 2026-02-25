@@ -12,6 +12,7 @@ export const componentDefinitionSchema = z.strictObject({
     'accepts must be a Zod schema instance',
   ),
   component: z.unknown(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 type AssertEqual<T, U> = [T] extends [U] ? ([U] extends [T] ? true : never) : never;
