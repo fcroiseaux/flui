@@ -128,6 +128,7 @@ describe('errors', () => {
         'cache',
         'connector',
         'config',
+        'context',
       ];
       for (const category of categories) {
         const error = new FluiError('FLUI_E001', category, `test ${category}`);
@@ -176,8 +177,8 @@ describe('errors', () => {
       }
     });
 
-    it('ERROR_CODE_DESCRIPTIONS has exactly 10 entries', () => {
-      expect(Object.keys(ERROR_CODE_DESCRIPTIONS)).toHaveLength(10);
+    it('ERROR_CODE_DESCRIPTIONS has exactly 12 entries', () => {
+      expect(Object.keys(ERROR_CODE_DESCRIPTIONS)).toHaveLength(12);
     });
 
     it('ErrorCategory type accepts all valid categories', () => {
@@ -187,8 +188,9 @@ describe('errors', () => {
         'cache',
         'connector',
         'config',
+        'context',
       ];
-      expect(categories).toHaveLength(5);
+      expect(categories).toHaveLength(6);
       for (const cat of categories) {
         expectTypeOf(cat).toMatchTypeOf<ErrorCategory>();
       }

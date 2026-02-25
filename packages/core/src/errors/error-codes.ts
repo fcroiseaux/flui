@@ -1,7 +1,13 @@
 /**
  * Error categories for classifying FluiError instances.
  */
-export type ErrorCategory = 'validation' | 'generation' | 'cache' | 'connector' | 'config';
+export type ErrorCategory =
+  | 'validation'
+  | 'generation'
+  | 'cache'
+  | 'connector'
+  | 'config'
+  | 'context';
 
 type Digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
 type NonZeroDigit = Exclude<Digit, '0'>;
@@ -43,6 +49,12 @@ export const FLUI_E009 = 'FLUI_E009' as const;
 /** Operation cancelled: AbortSignal triggered cancellation */
 export const FLUI_E010 = 'FLUI_E010' as const;
 
+/** Context resolution failed: a context provider returned an error during resolution */
+export const FLUI_E011 = 'FLUI_E011' as const;
+
+/** Invalid context data: context data does not match expected schema */
+export const FLUI_E012 = 'FLUI_E012' as const;
+
 export type DefinedFluiErrorCode =
   | typeof FLUI_E001
   | typeof FLUI_E002
@@ -53,7 +65,9 @@ export type DefinedFluiErrorCode =
   | typeof FLUI_E007
   | typeof FLUI_E008
   | typeof FLUI_E009
-  | typeof FLUI_E010;
+  | typeof FLUI_E010
+  | typeof FLUI_E011
+  | typeof FLUI_E012;
 
 /**
  * Human-readable descriptions for all defined error codes.
@@ -69,4 +83,6 @@ export const ERROR_CODE_DESCRIPTIONS: Record<DefinedFluiErrorCode, string> = {
   FLUI_E008: 'Initialization failed: module or subsystem failed to initialize',
   FLUI_E009: 'Unsupported operation: attempted operation not supported in current state',
   FLUI_E010: 'Operation cancelled: AbortSignal triggered cancellation',
+  FLUI_E011: 'Context resolution failed: a context provider returned an error during resolution',
+  FLUI_E012: 'Invalid context data: context data does not match expected schema',
 };

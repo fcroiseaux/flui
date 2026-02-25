@@ -1,5 +1,21 @@
 // @flui/core - Core generation engine
 
+// context/ module
+export type {
+  ContextData,
+  ContextProvider,
+  ContextResolver,
+  EnvironmentContext,
+  IdentityContext,
+  ViewportSize,
+} from './context';
+export {
+  createEnvironmentProvider,
+  createIdentityProvider,
+  environmentContextSchema,
+  identityContextSchema,
+  viewportSizeSchema,
+} from './context';
 // errors/ module
 export type { ErrorCategory, FluiErrorCode, FluiErrorOptions } from './errors';
 export {
@@ -16,6 +32,8 @@ export {
   FLUI_E008,
   FLUI_E009,
   FLUI_E010,
+  FLUI_E011,
+  FLUI_E012,
   FluiError,
   isError,
   isOk,
