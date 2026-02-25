@@ -43,3 +43,16 @@ export {
   uiSpecificationMetadataSchema,
   uiSpecificationSchema,
 } from './spec';
+
+// types (shared cross-cutting types)
+export type {
+  GenerationTrace,
+  GenerationTraceInit,
+  LLMConnector,
+  LLMRequestOptions,
+  LLMResponse,
+  LLMUsage,
+  TraceStep,
+} from './types';
+
+export { createTrace } from './types';

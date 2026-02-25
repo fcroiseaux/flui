@@ -3,9 +3,15 @@ import type {
   ComponentSpec,
   ErrorCategory,
   FluiErrorCode,
+  GenerationTrace,
   InteractionSpec,
   LayoutSpec,
+  LLMConnector,
+  LLMRequestOptions,
+  LLMResponse,
+  LLMUsage,
   Result,
+  TraceStep,
   UISpecification,
 } from './index';
 
@@ -64,5 +70,22 @@ describe('@flui/core', () => {
     expectTypeOf<ErrorCategory>().toBeString();
     expectTypeOf<FluiErrorCode>().toBeString();
     expectTypeOf<Result<number>>().toBeObject();
+  });
+
+  it('exports types module public API', async () => {
+    const api = await import('./index');
+    const exportedKeys = Object.keys(api);
+
+    // createTrace factory
+    expect(exportedKeys).toContain('createTrace');
+  });
+
+  it('supports shared type imports from @flui/core barrel', () => {
+    expectTypeOf<LLMConnector>().toBeObject();
+    expectTypeOf<LLMResponse>().toBeObject();
+    expectTypeOf<LLMRequestOptions>().toBeObject();
+    expectTypeOf<LLMUsage>().toBeObject();
+    expectTypeOf<GenerationTrace>().toBeObject();
+    expectTypeOf<TraceStep>().toBeObject();
   });
 });
