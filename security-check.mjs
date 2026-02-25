@@ -14,6 +14,10 @@ const FORBIDDEN_PATTERNS = [
     name: 'innerHTML assignment',
     regex: /\.innerHTML\s*=/,
   },
+  {
+    name: 'dynamic script injection',
+    regex: /\bcreateElement\s*\(\s*['\"]script['\"]\s*\)|\binsertAdjacentHTML\s*\(/,
+  },
 ];
 
 async function collectFiles(directory) {

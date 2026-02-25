@@ -23,6 +23,15 @@ export {
 } from './errors';
 export type { Result } from './errors/result';
 
+// registry/ module
+export type {
+  ComponentDefinition,
+  RegistryEntry,
+  SerializedComponent,
+  SerializedRegistry,
+} from './registry';
+export { ComponentRegistry, componentDefinitionSchema } from './registry';
+
 // spec/ module
 export type {
   ComponentSpec,
@@ -34,7 +43,6 @@ export type {
   UISpecification,
   UISpecificationMetadata,
 } from './spec';
-
 export {
   componentSpecSchema,
   interactionSpecSchema,
@@ -54,5 +62,4 @@ export type {
   LLMUsage,
   TraceStep,
 } from './types';
-
 export { createTrace } from './types';

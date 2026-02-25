@@ -41,17 +41,17 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   # Epic 1: Project Foundation & Core Types
-  epic-1: in-progress
+  epic-1: done
   1-1-initialize-monorepo-with-build-toolchain: done
   1-2-establish-uispecification-types-and-schema: done
   1-3-implement-fluierror-and-result-pattern: done
   1-4-implement-shared-types-and-llmconnector-interface: done
-  1-5-set-up-ci-cd-pipelines: backlog
+  1-5-set-up-ci-cd-pipelines: done
   epic-1-retrospective: optional
 
   # Epic 2: Component Registration & Discovery
-  epic-2: backlog
-  2-1-register-components-with-schema-and-metadata: backlog
+  epic-2: in-progress
+  2-1-register-components-with-schema-and-metadata: done
   2-2-batch-registration-and-registry-querying: backlog
   2-3-registry-serialization-for-llm-prompts: backlog
   epic-2-retrospective: optional
