@@ -39,13 +39,28 @@ export {
   FLUI_E012,
   FLUI_E013,
   FLUI_E014,
+  FLUI_E015,
+  FLUI_E016,
   FluiError,
   isError,
   isOk,
   ok,
 } from './errors';
 export type { Result } from './errors/result';
-
+// generation/ module
+export type {
+  GenerationConfig,
+  GenerationInput,
+  GenerationOrchestrator,
+  GenerationResult,
+  PromptBuilder,
+  SpecParser,
+} from './generation';
+export {
+  createGenerationOrchestrator,
+  createPromptBuilder,
+  createSpecParser,
+} from './generation';
 // intent/ module
 export type {
   Intent,
@@ -62,7 +77,6 @@ export {
   structuredIntentSchema,
   textIntentSchema,
 } from './intent';
-
 // registry/ module
 export type {
   ComponentDefinition,
@@ -71,7 +85,6 @@ export type {
   SerializedRegistry,
 } from './registry';
 export { ComponentRegistry, componentDefinitionSchema } from './registry';
-
 // spec/ module
 export type {
   ComponentSpec,

@@ -66,7 +66,7 @@ development_status:
   # Epic 4: UI Generation Pipeline
   epic-4: in-progress
   4-1-llm-connector-interface-and-openai-anthropic-implementations: done
-  4-2-prompt-construction-and-generation-orchestrator: backlog
+  4-2-prompt-construction-and-generation-orchestrator: done
   4-3-streaming-generation-and-progressive-spec-construction: backlog
   4-4-data-resolver: backlog
   epic-4-retrospective: optional
