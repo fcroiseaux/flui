@@ -23,6 +23,23 @@ export {
 } from './errors';
 export type { Result } from './errors/result';
 
+// intent/ module
+export type {
+  Intent,
+  IntentObject,
+  IntentSignals,
+  SanitizationConfig,
+  StructuredIntent,
+  TextIntent,
+} from './intent';
+export {
+  intentSchema,
+  parseIntent,
+  sanitizeIntent,
+  structuredIntentSchema,
+  textIntentSchema,
+} from './intent';
+
 // registry/ module
 export type {
   ComponentDefinition,
