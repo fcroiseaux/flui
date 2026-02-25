@@ -4,7 +4,12 @@ import type { Result } from '../errors';
 import { err, FLUI_E005, FluiError, ok } from '../errors';
 
 import { componentDefinitionSchema } from './registry.schema';
-import type { ComponentDefinition, RegistryEntry } from './registry.types';
+import type {
+  ComponentDefinition,
+  RegistryEntry,
+  SerializedComponent,
+  SerializedRegistry,
+} from './registry.types';
 
 /**
  * Component registry for storing and retrieving registered UI components.
@@ -180,5 +185,98 @@ export class ComponentRegistry {
    */
   get version(): number {
     return this.registryVersion;
+  }
+
+  /**
+   * Serializes the registry contents into a format optimized for LLM prompt construction.
+   * Components are sorted alphabetically by name for deterministic output.
+   * Returns SerializedRegistry directly (no Result wrapper — registry state is always valid).
+   */
+  serialize(): SerializedRegistry {
+    if (this.entries.size === 0) {
+      return { version: 0, components: [] };
+    }
+
+    const sortedEntries = [...this.entries.values()].sort((a, b) => a.name.localeCompare(b.name));
+
+    const components: SerializedComponent[] = sortedEntries.map((entry) => ({
+      name: entry.name,
+      category: entry.category,
+      description: entry.description,
+      propsSchema: this.zodSchemaToPropsSchema(entry.accepts),
+    }));
+
+    return {
+      version: this.registryVersion,
+      components,
+    };
+  }
+
+  /**
+   * Converts a Zod schema to a simplified human-readable props schema for LLM consumption.
+   * Uses z.toJSONSchema() for conversion, with fallback to {} on failure.
+   */
+  private zodSchemaToPropsSchema(schema: z.ZodTypeAny): Record<string, unknown> {
+    try {
+      const jsonSchema = z.toJSONSchema(schema);
+      const properties = (jsonSchema as Record<string, unknown>).properties;
+
+      if (properties === undefined || properties === null || typeof properties !== 'object') {
+        return { value: this.simplifyJsonSchemaType(jsonSchema) };
+      }
+
+      const result: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(properties as Record<string, unknown>)) {
+        result[key] = this.simplifyJsonSchemaType(value);
+      }
+      return result;
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Simplifies a JSON Schema type descriptor to a human-readable string.
+   */
+  private simplifyJsonSchemaType(schemaProperty: unknown): string {
+    if (
+      schemaProperty === null ||
+      schemaProperty === undefined ||
+      typeof schemaProperty !== 'object'
+    ) {
+      return 'unknown';
+    }
+
+    const prop = schemaProperty as Record<string, unknown>;
+    const type = prop.type;
+
+    if (type === 'array') {
+      const items = prop.items;
+      if (items !== null && items !== undefined && typeof items === 'object') {
+        const itemType = (items as Record<string, unknown>).type;
+        if (typeof itemType === 'string') {
+          return `array<${itemType}>`;
+        }
+      }
+      return 'array';
+    }
+
+    if (typeof type === 'string') {
+      return type;
+    }
+
+    // Handle anyOf/oneOf (e.g., optional fields in Zod 4 JSON Schema)
+    const anyOf = prop.anyOf;
+    if (Array.isArray(anyOf)) {
+      const nonNullTypes = anyOf.filter(
+        (t): t is Record<string, unknown> =>
+          t !== null && typeof t === 'object' && (t as Record<string, unknown>).type !== 'null',
+      );
+      if (nonNullTypes.length === 1 && nonNullTypes[0] !== undefined) {
+        return this.simplifyJsonSchemaType(nonNullTypes[0]);
+      }
+    }
+
+    return 'unknown';
   }
 }

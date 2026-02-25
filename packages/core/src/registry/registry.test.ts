@@ -436,6 +436,181 @@ describe('ComponentRegistry', () => {
     });
   });
 
+  describe('serialize', () => {
+    it('serializes a single component with correct structure', () => {
+      const registry = new ComponentRegistry();
+      registry.register(validDefinition);
+      const serialized = registry.serialize();
+
+      expect(serialized.version).toBe(1);
+      expect(serialized.components).toHaveLength(1);
+
+      const comp = serialized.components[0];
+      expect(comp).toBeDefined();
+      if (comp === undefined) {
+        throw new Error('Expected serialized component to be defined');
+      }
+      expect(comp.name).toBe('KPICard');
+      expect(comp.category).toBe('data');
+      expect(comp.description).toBe('Displays a key performance indicator');
+      expect(comp.propsSchema).toEqual({ title: 'string', count: 'number' });
+    });
+
+    it('serializes multiple components across categories sorted alphabetically by name', () => {
+      const registry = new ComponentRegistry();
+      registry.batchRegister([
+        validDefinition,
+        anotherValidDefinition,
+        chartDefinition,
+        formDefinition,
+        layoutDefinition,
+      ]);
+      const serialized = registry.serialize();
+
+      expect(serialized.version).toBe(1);
+      expect(serialized.components).toHaveLength(5);
+      expect(serialized.components.map((c) => c.name)).toEqual([
+        'BarChart',
+        'DataTable',
+        'GridLayout',
+        'KPICard',
+        'TextInput',
+      ]);
+    });
+
+    it('serializes empty registry as { version: 0, components: [] }', () => {
+      const registry = new ComponentRegistry();
+      const serialized = registry.serialize();
+      expect(serialized).toEqual({ version: 0, components: [] });
+    });
+
+    it('converts props schema with basic types to human-readable format', () => {
+      const registry = new ComponentRegistry();
+      registry.register(validDefinition); // title: z.string(), count: z.number()
+      const serialized = registry.serialize();
+      const comp = serialized.components[0];
+      if (comp === undefined) {
+        throw new Error('Expected serialized component to be defined');
+      }
+      expect(comp.propsSchema).toEqual({ title: 'string', count: 'number' });
+    });
+
+    it('converts array type props to human-readable format', () => {
+      const registry = new ComponentRegistry();
+      registry.register(chartDefinition); // data: z.array(z.number())
+      const serialized = registry.serialize();
+      const comp = serialized.components[0];
+      if (comp === undefined) {
+        throw new Error('Expected serialized component to be defined');
+      }
+      expect(comp.propsSchema).toEqual({ data: 'array<number>' });
+    });
+
+    it('converts optional fields correctly', () => {
+      const registry = new ComponentRegistry();
+      registry.register({
+        name: 'OptionalTest',
+        category: 'test',
+        description: 'Test optional fields',
+        accepts: z.object({ label: z.string(), subtitle: z.string().optional() }),
+        component: null,
+      });
+      const serialized = registry.serialize();
+      const comp = serialized.components[0];
+      if (comp === undefined) {
+        throw new Error('Expected serialized component to be defined');
+      }
+      expect(comp.propsSchema).toEqual({ label: 'string', subtitle: 'string' });
+    });
+
+    it('serializes non-object schema to simplified top-level representation', () => {
+      const registry = new ComponentRegistry();
+      registry.register({
+        name: 'StringOnlyComponent',
+        category: 'test',
+        description: 'Accepts a string directly',
+        accepts: z.string(),
+        component: null,
+      });
+
+      const serialized = registry.serialize();
+      const comp = serialized.components[0];
+      if (comp === undefined) {
+        throw new Error('Expected serialized component to be defined');
+      }
+      expect(comp.propsSchema).toEqual({ value: 'string' });
+    });
+
+    it('produces deterministic output (serialize twice gives identical JSON)', () => {
+      const registry = new ComponentRegistry();
+      registry.batchRegister([chartDefinition, validDefinition, formDefinition]);
+      const first = JSON.stringify(registry.serialize());
+      const second = JSON.stringify(registry.serialize());
+      expect(first).toBe(second);
+    });
+
+    it('does not expose Zod internal objects in serialized output', () => {
+      const registry = new ComponentRegistry();
+      registry.batchRegister([validDefinition, chartDefinition, formDefinition]);
+      const serialized = registry.serialize();
+      const jsonStr = JSON.stringify(serialized);
+      // Zod internal markers should not appear
+      expect(jsonStr).not.toContain('ZodString');
+      expect(jsonStr).not.toContain('ZodNumber');
+      expect(jsonStr).not.toContain('ZodObject');
+      expect(jsonStr).not.toContain('_def');
+    });
+
+    it('version field matches registry.version', () => {
+      const registry = new ComponentRegistry();
+      registry.register(validDefinition);
+      registry.register(anotherValidDefinition);
+      expect(registry.serialize().version).toBe(registry.version);
+      expect(registry.serialize().version).toBe(2);
+    });
+
+    it('handles Zod conversion failure gracefully with fallback empty propsSchema', () => {
+      const registry = new ComponentRegistry();
+      // z.custom() is not representable in JSON Schema — z.toJSONSchema() will throw
+      registry.register({
+        name: 'CustomComponent',
+        category: 'custom',
+        description: 'Has non-serializable schema',
+        accepts: z.custom<{ x: number }>(),
+        component: null,
+      });
+      const serialized = registry.serialize();
+      expect(serialized.components).toHaveLength(1);
+      const comp = serialized.components[0];
+      if (comp === undefined) {
+        throw new Error('Expected serialized component to be defined');
+      }
+      expect(comp.name).toBe('CustomComponent');
+      expect(comp.propsSchema).toEqual({});
+    });
+
+    it('does not fail the entire registry when one component has non-serializable schema', () => {
+      const registry = new ComponentRegistry();
+      registry.batchRegister([
+        validDefinition,
+        {
+          name: 'BadSchema',
+          category: 'test',
+          description: 'Non-serializable',
+          accepts: z.custom<string>(),
+          component: null,
+        },
+        chartDefinition,
+      ]);
+      const serialized = registry.serialize();
+      expect(serialized.components).toHaveLength(3);
+      const names = serialized.components.map((c) => c.name);
+      expect(names).toContain('KPICard');
+      expect(names).toContain('BadSchema');
+      expect(names).toContain('BarChart');
+    });
+  });
+
   describe('getAll', () => {
     it('returns all registered entries', () => {
       const registry = new ComponentRegistry();
