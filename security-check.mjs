@@ -21,7 +21,7 @@ async function collectFiles(directory) {
   const files = [];
 
   for (const entry of entries) {
-    if (entry.name === 'dist' || entry.name === 'node_modules') {
+    if (entry.name === 'dist' || entry.name === 'node_modules' || entry.name === 'coverage') {
       continue;
     }
 
