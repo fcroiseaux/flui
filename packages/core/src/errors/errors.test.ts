@@ -177,8 +177,8 @@ describe('errors', () => {
       }
     });
 
-    it('ERROR_CODE_DESCRIPTIONS has exactly 13 entries', () => {
-      expect(Object.keys(ERROR_CODE_DESCRIPTIONS)).toHaveLength(13);
+    it('ERROR_CODE_DESCRIPTIONS has exactly 14 entries', () => {
+      expect(Object.keys(ERROR_CODE_DESCRIPTIONS)).toHaveLength(14);
     });
 
     it('ErrorCategory type accepts all valid categories', () => {

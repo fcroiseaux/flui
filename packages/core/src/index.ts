@@ -38,6 +38,7 @@ export {
   FLUI_E011,
   FLUI_E012,
   FLUI_E013,
+  FLUI_E014,
   FluiError,
   isError,
   isOk,

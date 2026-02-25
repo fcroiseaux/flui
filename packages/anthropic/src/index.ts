@@ -1,2 +1,3 @@
 // @flui/anthropic - Anthropic connector
-export {};
+export type { AnthropicConnectorConfig } from './anthropic.types';
+export { createAnthropicConnector } from './connector';

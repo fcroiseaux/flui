@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "@flui/core": "workspace:*",
+    "@anthropic-ai/sdk": "^0.78.0",
     "tsup": "8.5.1",
     "typescript": "5.8.3",
     "vitest": "4.0.18"

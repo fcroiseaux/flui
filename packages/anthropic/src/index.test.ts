@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 describe('@flui/anthropic', () => {
-  it('exports an empty API barrel for now', async () => {
+  it('exports createAnthropicConnector factory function', async () => {
     const api = await import('./index');
-    expect(Object.keys(api)).toEqual([]);
+    expect(api.createAnthropicConnector).toBeDefined();
+    expect(typeof api.createAnthropicConnector).toBe('function');
   });
 });

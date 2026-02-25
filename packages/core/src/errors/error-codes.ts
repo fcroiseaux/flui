@@ -58,6 +58,9 @@ export const FLUI_E012 = 'FLUI_E012' as const;
 /** Duplicate context provider: a provider with this name is already registered */
 export const FLUI_E013 = 'FLUI_E013' as const;
 
+/** LLM provider API error: timeout, rate limit, network, or authentication failure */
+export const FLUI_E014 = 'FLUI_E014' as const;
+
 export type DefinedFluiErrorCode =
   | typeof FLUI_E001
   | typeof FLUI_E002
@@ -71,7 +74,8 @@ export type DefinedFluiErrorCode =
   | typeof FLUI_E010
   | typeof FLUI_E011
   | typeof FLUI_E012
-  | typeof FLUI_E013;
+  | typeof FLUI_E013
+  | typeof FLUI_E014;
 
 /**
  * Human-readable descriptions for all defined error codes.
@@ -90,4 +94,5 @@ export const ERROR_CODE_DESCRIPTIONS: Record<DefinedFluiErrorCode, string> = {
   FLUI_E011: 'Context resolution failed: a context provider returned an error during resolution',
   FLUI_E012: 'Invalid context data: context data does not match expected schema',
   FLUI_E013: 'Duplicate context provider: a provider with this name is already registered',
+  FLUI_E014: 'LLM provider API error: timeout, rate limit, network, or authentication failure',
 };

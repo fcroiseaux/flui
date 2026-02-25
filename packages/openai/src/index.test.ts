@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 describe('@flui/openai', () => {
-  it('exports an empty API barrel for now', async () => {
+  it('exports createOpenAIConnector factory function', async () => {
     const api = await import('./index');
-    expect(Object.keys(api)).toEqual([]);
+    expect(api.createOpenAIConnector).toBeDefined();
+    expect(typeof api.createOpenAIConnector).toBe('function');
   });
 });
