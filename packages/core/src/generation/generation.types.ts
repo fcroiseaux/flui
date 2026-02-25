@@ -62,3 +62,33 @@ export interface GenerationOrchestrator {
     signal?: AbortSignal,
   ): Promise<Result<GenerationResult>>;
 }
+
+/**
+ * Options for streaming generation, including progress callbacks.
+ */
+export interface StreamingGenerationOptions {
+  /** Called when new structure is parsed from the stream. */
+  onProgress?: ((partialSpec: Partial<UISpecification>) => void) | undefined;
+}
+
+/**
+ * Incrementally parses streaming LLM output into a UISpecification.
+ */
+export interface StreamingSpecParser {
+  /** Feed a text delta and return partial spec if new structure detected. */
+  processChunk(delta: string): Partial<UISpecification> | undefined;
+  /** Finalize and validate the complete accumulated spec. */
+  finalize(): Result<UISpecification>;
+}
+
+/**
+ * Extended orchestrator with streaming generation support.
+ */
+export interface StreamingGenerationOrchestrator extends GenerationOrchestrator {
+  generateStream(
+    input: GenerationInput,
+    trace: GenerationTrace,
+    options?: StreamingGenerationOptions,
+    signal?: AbortSignal,
+  ): Promise<Result<GenerationResult>>;
+}

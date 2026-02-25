@@ -130,6 +130,51 @@ export interface GenerationTraceInit {
  * @param init - Optional initialization options (id, startTime)
  * @returns A mutable GenerationTrace implementation
  */
+/**
+ * A single chunk from a streaming LLM response.
+ * Normalized across all providers per ADR-009.
+ */
+export interface GenerationChunk {
+  /** The text delta for this chunk. */
+  delta: string;
+  /** Whether this is the final chunk in the stream. */
+  done: boolean;
+  /** Model identifier (typically available on first or last chunk). */
+  model?: string | undefined;
+  /** Token usage statistics (available on final chunk only). */
+  usage?: LLMUsage | undefined;
+}
+
+/**
+ * Extended LLM connector interface with streaming support.
+ * Normalizes provider-specific streaming into AsyncIterable<GenerationChunk> per ADR-009.
+ */
+export interface StreamingLLMConnector extends LLMConnector {
+  /**
+   * Stream a response from the LLM as an async iterable of chunks.
+   *
+   * @param prompt - The prompt text to send to the LLM
+   * @param options - Generation options (model, temperature, etc.)
+   * @param signal - Optional AbortSignal for cancellation
+   * @returns Result.ok with an AsyncIterable of chunks, or Result.error on connection failure
+   */
+  streamGenerate(
+    prompt: string,
+    options: LLMRequestOptions,
+    signal?: AbortSignal,
+  ): Promise<Result<AsyncIterable<GenerationChunk>>>;
+}
+
+/**
+ * Type guard to check if an LLM connector supports streaming.
+ */
+export function isStreamingConnector(connector: LLMConnector): connector is StreamingLLMConnector {
+  return (
+    'streamGenerate' in connector &&
+    typeof (connector as { streamGenerate?: unknown }).streamGenerate === 'function'
+  );
+}
+
 export function createTrace(init?: GenerationTraceInit): GenerationTrace {
   const steps: TraceStep[] = [];
   const id = init?.id ?? `trace-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;

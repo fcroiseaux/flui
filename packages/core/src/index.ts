@@ -41,6 +41,7 @@ export {
   FLUI_E014,
   FLUI_E015,
   FLUI_E016,
+  FLUI_E017,
   FluiError,
   isError,
   isOk,
@@ -55,11 +56,16 @@ export type {
   GenerationResult,
   PromptBuilder,
   SpecParser,
+  StreamingGenerationOptions,
+  StreamingGenerationOrchestrator,
+  StreamingSpecParser,
 } from './generation';
 export {
   createGenerationOrchestrator,
   createPromptBuilder,
   createSpecParser,
+  createStreamingOrchestrator,
+  createStreamingSpecParser,
 } from './generation';
 // intent/ module
 export type {
@@ -107,12 +113,14 @@ export {
 
 // types (shared cross-cutting types)
 export type {
+  GenerationChunk,
   GenerationTrace,
   GenerationTraceInit,
   LLMConnector,
   LLMRequestOptions,
   LLMResponse,
   LLMUsage,
+  StreamingLLMConnector,
   TraceStep,
 } from './types';
-export { createTrace } from './types';
+export { createTrace, isStreamingConnector } from './types';

@@ -67,6 +67,9 @@ export const FLUI_E015 = 'FLUI_E015' as const;
 /** UISpecification validation failed: LLM response does not conform to UISpecification schema */
 export const FLUI_E016 = 'FLUI_E016' as const;
 
+/** Stream terminated unexpectedly: stream ended before producing a complete response */
+export const FLUI_E017 = 'FLUI_E017' as const;
+
 export type DefinedFluiErrorCode =
   | typeof FLUI_E001
   | typeof FLUI_E002
@@ -83,7 +86,8 @@ export type DefinedFluiErrorCode =
   | typeof FLUI_E013
   | typeof FLUI_E014
   | typeof FLUI_E015
-  | typeof FLUI_E016;
+  | typeof FLUI_E016
+  | typeof FLUI_E017;
 
 /**
  * Human-readable descriptions for all defined error codes.
@@ -106,4 +110,5 @@ export const ERROR_CODE_DESCRIPTIONS: Record<DefinedFluiErrorCode, string> = {
   FLUI_E015: 'LLM response parse failed: malformed JSON or unexpected response format',
   FLUI_E016:
     'UISpecification validation failed: LLM response does not conform to UISpecification schema',
+  FLUI_E017: 'Stream terminated unexpectedly: stream ended before producing a complete response',
 };

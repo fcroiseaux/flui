@@ -20,6 +20,7 @@ import {
   FLUI_E014,
   FLUI_E015,
   FLUI_E016,
+  FLUI_E017,
   FluiError,
   isError,
   isOk,
@@ -161,10 +162,11 @@ describe('errors', () => {
       FLUI_E014,
       FLUI_E015,
       FLUI_E016,
+      FLUI_E017,
     ] as const;
 
-    it('exports all 16 error code constants', () => {
-      expect(allCodes).toHaveLength(16);
+    it('exports all 17 error code constants', () => {
+      expect(allCodes).toHaveLength(17);
     });
 
     it('all codes have correct FLUI_EXXX format', () => {
@@ -173,9 +175,9 @@ describe('errors', () => {
       }
     });
 
-    it('codes are sequential from FLUI_E001 to FLUI_E016', () => {
+    it('codes are sequential from FLUI_E001 to FLUI_E017', () => {
       const expected = Array.from(
-        { length: 16 },
+        { length: 17 },
         (_, i) => `FLUI_E${String(i + 1).padStart(3, '0')}`,
       );
       expect([...allCodes]).toStrictEqual(expected);
@@ -189,8 +191,8 @@ describe('errors', () => {
       }
     });
 
-    it('ERROR_CODE_DESCRIPTIONS has exactly 16 entries', () => {
-      expect(Object.keys(ERROR_CODE_DESCRIPTIONS)).toHaveLength(16);
+    it('ERROR_CODE_DESCRIPTIONS has exactly 17 entries', () => {
+      expect(Object.keys(ERROR_CODE_DESCRIPTIONS)).toHaveLength(17);
     });
 
     it('ErrorCategory type accepts all valid categories', () => {
