@@ -2,7 +2,9 @@
 
 // context/ module
 export type {
+  AggregatedContext,
   ContextData,
+  ContextEngine,
   ContextProvider,
   ContextResolver,
   EnvironmentContext,
@@ -10,6 +12,7 @@ export type {
   ViewportSize,
 } from './context';
 export {
+  createContextEngine,
   createEnvironmentProvider,
   createIdentityProvider,
   environmentContextSchema,
@@ -34,6 +37,7 @@ export {
   FLUI_E010,
   FLUI_E011,
   FLUI_E012,
+  FLUI_E013,
   FluiError,
   isError,
   isOk,

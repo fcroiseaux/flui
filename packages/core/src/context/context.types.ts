@@ -44,3 +44,17 @@ export interface ContextProvider<T extends ContextData = ContextData> {
  * Input to a context factory: either static data or a resolver function.
  */
 export type ContextResolver<T> = T | (() => T | Promise<T>);
+
+/**
+ * Aggregated context from all registered providers, keyed by provider name.
+ */
+export type AggregatedContext = Record<string, ContextData>;
+
+/**
+ * Engine that manages context provider registration and concurrent resolution.
+ */
+export interface ContextEngine {
+  registerProvider(provider: ContextProvider): Result<void>;
+  resolveAll(signal?: AbortSignal): Promise<Result<AggregatedContext>>;
+  getProviderNames(): string[];
+}

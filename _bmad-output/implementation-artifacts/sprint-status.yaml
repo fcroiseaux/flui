@@ -60,7 +60,7 @@ development_status:
   epic-3: in-progress
   3-1-parse-text-and-structured-intents: done
   3-2-built-in-context-providers-identity-and-environment: done
-  3-3-custom-context-providers-and-context-aggregation: backlog
+  3-3-custom-context-providers-and-context-aggregation: done
   epic-3-retrospective: optional
 
   # Epic 4: UI Generation Pipeline

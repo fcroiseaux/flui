@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { FLUI_E010, FLUI_E011, FLUI_E012, isError, isOk } from '../errors';
-import type { EnvironmentContext, IdentityContext } from './index';
 import {
+  err,
+  FLUI_E005,
+  FLUI_E010,
+  FLUI_E011,
+  FLUI_E012,
+  FLUI_E013,
+  FluiError,
+  isError,
+  isOk,
+  ok,
+} from '../errors';
+import type { ContextData, ContextProvider, EnvironmentContext, IdentityContext } from './index';
+import {
+  createContextEngine,
   createEnvironmentProvider,
   createIdentityProvider,
   environmentContextSchema,
@@ -293,6 +305,250 @@ describe('createEnvironmentProvider', () => {
         expect(result.error.category).toBe('context');
       }
     });
+  });
+});
+
+// ── createContextEngine ──────────────────────────────────────────────────
+
+function createTestProvider(name: string, data: ContextData): ContextProvider {
+  return {
+    name,
+    async resolve(signal?: AbortSignal) {
+      if (signal?.aborted) return err(new FluiError(FLUI_E010, 'context', 'Cancelled'));
+      return ok(data);
+    },
+  };
+}
+
+function createFailingProvider(name: string, errorMessage: string): ContextProvider {
+  return {
+    name,
+    async resolve() {
+      return err(new FluiError(FLUI_E011, 'context', errorMessage));
+    },
+  };
+}
+
+describe('createContextEngine', () => {
+  it('getProviderNames() returns empty array initially', () => {
+    const engine = createContextEngine();
+    expect(engine.getProviderNames()).toEqual([]);
+  });
+
+  it('registerProvider returns Result.ok for valid provider', () => {
+    const engine = createContextEngine();
+    const result = engine.registerProvider(createTestProvider('tenant', { tenantId: 'acme' }));
+
+    expect(isOk(result)).toBe(true);
+    expect(engine.getProviderNames()).toEqual(['tenant']);
+  });
+
+  it('registerProvider returns FLUI_E013 for duplicate name', () => {
+    const engine = createContextEngine();
+    engine.registerProvider(createTestProvider('tenant', { tenantId: 'acme' }));
+    const result = engine.registerProvider(createTestProvider('tenant', { tenantId: 'other' }));
+
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.error.code).toBe(FLUI_E013);
+      expect(result.error.category).toBe('context');
+      expect(result.error.message).toContain('tenant');
+    }
+  });
+
+  it('registerProvider returns FLUI_E005 for empty provider name', () => {
+    const engine = createContextEngine();
+    const result = engine.registerProvider(createTestProvider('', { data: true }));
+
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.error.code).toBe(FLUI_E005);
+      expect(result.error.category).toBe('validation');
+    }
+  });
+
+  it('registerProvider returns FLUI_E005 for whitespace-only provider name', () => {
+    const engine = createContextEngine();
+    const result = engine.registerProvider(createTestProvider('   ', { data: true }));
+
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.error.code).toBe(FLUI_E005);
+      expect(result.error.category).toBe('validation');
+    }
+  });
+
+  describe('resolveAll', () => {
+    it('empty engine (no providers) returns Result.ok({})', async () => {
+      const engine = createContextEngine();
+      const result = await engine.resolveAll();
+
+      expect(isOk(result)).toBe(true);
+      if (isOk(result)) {
+        expect(result.value).toEqual({});
+      }
+    });
+
+    it('single custom provider returns keyed result', async () => {
+      const engine = createContextEngine();
+      const tenantData = { tenantId: 'acme', plan: 'enterprise' };
+      engine.registerProvider(createTestProvider('tenant', tenantData));
+      const result = await engine.resolveAll();
+
+      expect(isOk(result)).toBe(true);
+      if (isOk(result)) {
+        expect(result.value).toEqual({ tenant: tenantData });
+      }
+    });
+
+    it('multiple providers (identity + environment + custom) all keyed in result', async () => {
+      const engine = createContextEngine();
+      engine.registerProvider(
+        createIdentityProvider({
+          role: 'admin',
+          permissions: ['read'],
+          expertiseLevel: 'expert',
+        }),
+      );
+      engine.registerProvider(
+        createEnvironmentProvider({
+          deviceType: 'desktop',
+          viewportSize: { width: 1920, height: 1080 },
+          connectionQuality: 'fast',
+        }),
+      );
+      const customData = { featureFlags: ['dark-mode'] };
+      engine.registerProvider(createTestProvider('features', customData));
+
+      const result = await engine.resolveAll();
+
+      expect(isOk(result)).toBe(true);
+      if (isOk(result)) {
+        expect(Object.keys(result.value)).toHaveLength(3);
+        expect(result.value.identity).toBeDefined();
+        expect(result.value.environment).toBeDefined();
+        expect(result.value.features).toEqual(customData);
+      }
+    });
+
+    it('partial failure — one provider fails returns Result.error with FLUI_E011 and successful results in context', async () => {
+      const engine = createContextEngine();
+      const goodData = { tenantId: 'acme' };
+      engine.registerProvider(createTestProvider('tenant', goodData));
+      engine.registerProvider(createFailingProvider('broken', 'Service unavailable'));
+
+      const result = await engine.resolveAll();
+
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        expect(result.error.code).toBe(FLUI_E011);
+        expect(result.error.category).toBe('context');
+        expect(result.error.message).toContain('broken');
+        expect(result.error.context).toBeDefined();
+        expect(result.error.context?.failedProviders).toEqual(['broken']);
+        expect(result.error.context?.successfulResults).toEqual({ tenant: goodData });
+      }
+    });
+
+    it('all providers fail returns Result.error with FLUI_E011', async () => {
+      const engine = createContextEngine();
+      engine.registerProvider(createFailingProvider('provider-a', 'Error A'));
+      engine.registerProvider(createFailingProvider('provider-b', 'Error B'));
+
+      const result = await engine.resolveAll();
+
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        expect(result.error.code).toBe(FLUI_E011);
+        expect(result.error.context?.failedProviders).toEqual(['provider-a', 'provider-b']);
+        expect(result.error.context?.successfulResults).toEqual({});
+      }
+    });
+
+    it('AbortSignal already aborted returns Result.error with FLUI_E010', async () => {
+      const engine = createContextEngine();
+      engine.registerProvider(createTestProvider('tenant', { id: '1' }));
+
+      const controller = new AbortController();
+      controller.abort();
+      const result = await engine.resolveAll(controller.signal);
+
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        expect(result.error.code).toBe(FLUI_E010);
+        expect(result.error.category).toBe('context');
+      }
+    });
+
+    it('AbortSignal aborted during resolution returns Result.error with FLUI_E010', async () => {
+      const controller = new AbortController();
+      const engine = createContextEngine();
+
+      // Provider that aborts signal during resolution
+      const slowProvider: ContextProvider = {
+        name: 'slow',
+        async resolve() {
+          controller.abort();
+          return ok({ done: true });
+        },
+      };
+      engine.registerProvider(slowProvider);
+
+      const result = await engine.resolveAll(controller.signal);
+
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        expect(result.error.code).toBe(FLUI_E010);
+      }
+    });
+
+    it('providers are called concurrently (not sequentially)', async () => {
+      const engine = createContextEngine();
+      const resolveOrder: string[] = [];
+
+      const provider1: ContextProvider = {
+        name: 'p1',
+        async resolve() {
+          await new Promise((r) => setTimeout(r, 20));
+          resolveOrder.push('p1');
+          return ok({ id: 1 });
+        },
+      };
+
+      const provider2: ContextProvider = {
+        name: 'p2',
+        async resolve() {
+          await new Promise((r) => setTimeout(r, 10));
+          resolveOrder.push('p2');
+          return ok({ id: 2 });
+        },
+      };
+
+      engine.registerProvider(provider1);
+      engine.registerProvider(provider2);
+
+      const start = Date.now();
+      const result = await engine.resolveAll();
+      const elapsed = Date.now() - start;
+
+      expect(isOk(result)).toBe(true);
+      // If sequential, would take ~30ms. Concurrent should be ~20ms.
+      // Use generous threshold to avoid flakiness.
+      expect(elapsed).toBeLessThan(100);
+      // Completion order can vary based on scheduler timing.
+      expect(resolveOrder).toHaveLength(2);
+      expect(new Set(resolveOrder)).toEqual(new Set(['p1', 'p2']));
+    });
+  });
+
+  it('each createContextEngine() call produces independent engine', () => {
+    const engine1 = createContextEngine();
+    const engine2 = createContextEngine();
+
+    engine1.registerProvider(createTestProvider('tenant', { id: '1' }));
+
+    expect(engine1.getProviderNames()).toEqual(['tenant']);
+    expect(engine2.getProviderNames()).toEqual([]);
   });
 });
 
