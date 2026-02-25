@@ -3,7 +3,8 @@
     "name": "@flui/core",
     "path": "packages/core/dist/index.js",
     "limit": "25 kB",
-    "gzip": true
+    "gzip": true,
+    "ignore": ["zod"]
   },
   {
     "name": "@flui/react",

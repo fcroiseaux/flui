@@ -1,8 +1,26 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
+import type { ComponentSpec, InteractionSpec, LayoutSpec, UISpecification } from './index';
 
 describe('@flui/core', () => {
-  it('exports an empty API barrel for now', async () => {
+  it('exports spec module public API', async () => {
     const api = await import('./index');
-    expect(Object.keys(api)).toEqual([]);
+    const exportedKeys = Object.keys(api);
+
+    // Schema exports
+    expect(exportedKeys).toContain('componentSpecSchema');
+    expect(exportedKeys).toContain('layoutSpecSchema');
+    expect(exportedKeys).toContain('interactionSpecSchema');
+    expect(exportedKeys).toContain('uiSpecificationMetadataSchema');
+    expect(exportedKeys).toContain('uiSpecificationSchema');
+
+    // Constants
+    expect(exportedKeys).toContain('SPEC_VERSION');
+  });
+
+  it('supports public type imports from @flui/core barrel', () => {
+    expectTypeOf<ComponentSpec>().toBeObject();
+    expectTypeOf<LayoutSpec>().toBeObject();
+    expectTypeOf<InteractionSpec>().toBeObject();
+    expectTypeOf<UISpecification>().toBeObject();
   });
 });

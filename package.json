@@ -23,6 +23,7 @@
     "@biomejs/biome": "2.4.4",
     "@changesets/cli": "2.29.8",
     "@size-limit/preset-small-lib": "11.2.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "size-limit": "11.2.0",
     "turbo": "2.8.10",
     "vitest": "4.0.18"
