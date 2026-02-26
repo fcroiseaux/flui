@@ -85,6 +85,9 @@ export const FLUI_E021 = 'FLUI_E021' as const;
 /** Data authorization validation failed: unauthorized data identifiers referenced */
 export const FLUI_E022 = 'FLUI_E022' as const;
 
+/** Validation retry exhausted: all retry attempts failed validation */
+export const FLUI_E023 = 'FLUI_E023' as const;
+
 export type DefinedFluiErrorCode =
   | typeof FLUI_E001
   | typeof FLUI_E002
@@ -107,7 +110,8 @@ export type DefinedFluiErrorCode =
   | typeof FLUI_E019
   | typeof FLUI_E020
   | typeof FLUI_E021
-  | typeof FLUI_E022;
+  | typeof FLUI_E022
+  | typeof FLUI_E023;
 
 /**
  * Human-readable descriptions for all defined error codes.
@@ -136,4 +140,5 @@ export const ERROR_CODE_DESCRIPTIONS: Record<DefinedFluiErrorCode, string> = {
   FLUI_E020: 'Validation pipeline failed: one or more validators rejected the specification',
   FLUI_E021: 'Accessibility validation failed: WCAG 2.1 AA compliance issues detected',
   FLUI_E022: 'Data authorization validation failed: unauthorized data identifiers referenced',
+  FLUI_E023: 'Validation retry exhausted: all retry attempts failed validation',
 };

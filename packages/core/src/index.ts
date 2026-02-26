@@ -56,6 +56,7 @@ export {
   FLUI_E020,
   FLUI_E021,
   FLUI_E022,
+  FLUI_E023,
   FluiError,
   isError,
   isOk,
@@ -142,11 +143,20 @@ export { createTrace, isStreamingConnector } from './types';
 export type {
   AnyValidatorFn,
   AsyncValidatorFn,
+  RegenerateFn,
+  ValidationAttempt,
   ValidationError,
   ValidationPipeline,
   ValidationPipelineConfig,
   ValidationResult,
+  ValidationRetryConfig,
+  ValidationRetryResult,
   ValidatorContext,
   ValidatorFn,
 } from './validation';
-export { a11yValidator, createValidationPipeline, dataAuthorizationValidator } from './validation';
+export {
+  a11yValidator,
+  buildRetryPrompt,
+  createValidationPipeline,
+  dataAuthorizationValidator,
+} from './validation';

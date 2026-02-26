@@ -1,13 +1,21 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-import { isError, isOk } from '../errors';
+import { err, FluiError, isError, isOk, ok } from '../errors';
 import { ComponentRegistry } from '../registry';
 import type { ComponentSpec, UISpecification } from '../spec';
 import { SPEC_VERSION } from '../spec';
+import { createTrace } from '../types';
 
 import { createValidationPipeline } from './pipeline';
-import type { AnyValidatorFn, AsyncValidatorFn, ValidatorContext } from './validation.types';
+import { buildRetryPrompt } from './retry-prompt-builder';
+import type {
+  AnyValidatorFn,
+  AsyncValidatorFn,
+  RegenerateFn,
+  ValidationError,
+  ValidatorContext,
+} from './validation.types';
 
 /**
  * Creates a minimal valid UISpecification for testing.
@@ -1340,6 +1348,441 @@ describe('ValidationPipeline', () => {
         const errors = result.error.context?.errors as Array<{ validator: string }>;
         expect(errors.some((e) => e.validator === 'custom-id-check')).toBe(true);
       }
+    });
+  });
+
+  describe('addValidator', () => {
+    it('adds custom validator and it executes after built-in validators', async () => {
+      const customValidator: AnyValidatorFn = () => ({
+        valid: false,
+        errors: [{ validator: 'custom-order', message: 'custom ran' }],
+      });
+
+      const pipeline = createValidationPipeline();
+      const result = pipeline.addValidator(customValidator);
+      expect(isOk(result)).toBe(true);
+
+      const invalidSpec = validSpec({
+        components: [{ id: 'unknown-1', componentType: 'NonExistent', props: {} }],
+      });
+
+      const validateResult = await pipeline.validate(invalidSpec, testContext());
+
+      expect(isError(validateResult)).toBe(true);
+      if (isError(validateResult)) {
+        const errors = validateResult.error.context?.errors as ValidationError[];
+        const builtInIndex = errors.findIndex((e) => e.validator === 'component');
+        const customIndex = errors.findIndex((e) => e.validator === 'custom-order');
+
+        expect(builtInIndex).toBeGreaterThanOrEqual(0);
+        expect(customIndex).toBeGreaterThanOrEqual(0);
+        expect(customIndex).toBeGreaterThan(builtInIndex);
+      }
+    });
+
+    it('multiple custom validators execute in registration order', async () => {
+      const executionOrder: string[] = [];
+      const validatorA: AnyValidatorFn = (spec) => {
+        executionOrder.push('A');
+        return { valid: true, spec };
+      };
+      const validatorB: AnyValidatorFn = (spec) => {
+        executionOrder.push('B');
+        return { valid: true, spec };
+      };
+      const validatorC: AnyValidatorFn = (spec) => {
+        executionOrder.push('C');
+        return { valid: true, spec };
+      };
+
+      const pipeline = createValidationPipeline();
+      pipeline.addValidator(validatorA);
+      pipeline.addValidator(validatorB);
+      pipeline.addValidator(validatorC);
+
+      await pipeline.validate(validSpec(), testContext());
+
+      expect(executionOrder).toStrictEqual(['A', 'B', 'C']);
+    });
+
+    it('custom validator errors aggregated with built-in validator errors', async () => {
+      const customValidator: AnyValidatorFn = () => ({
+        valid: false,
+        errors: [
+          { validator: 'custom-brand', message: 'Brand colors not used', field: 'root.theme' },
+        ],
+      });
+
+      const pipeline = createValidationPipeline();
+      pipeline.addValidator(customValidator);
+
+      // Spec with unregistered component to trigger built-in error + custom error
+      const spec = validSpec({
+        components: [{ id: 'x', componentType: 'UnknownWidget', props: {} }],
+      });
+
+      const result = await pipeline.validate(spec, testContext());
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        const errors = result.error.context?.errors as ValidationError[];
+        const validators = new Set(errors.map((e) => e.validator));
+        // Should have both built-in errors and the custom validator error
+        expect(validators.has('custom-brand')).toBe(true);
+        expect(validators.size).toBeGreaterThan(1);
+      }
+    });
+
+    it('returns Result.ok(undefined) on success', () => {
+      const pipeline = createValidationPipeline();
+      const result = pipeline.addValidator((spec) => ({ valid: true, spec }));
+      expect(isOk(result)).toBe(true);
+      if (isOk(result)) {
+        expect(result.value).toBeUndefined();
+      }
+    });
+  });
+
+  describe('removeValidator', () => {
+    it('removes previously added validator', async () => {
+      const executionOrder: string[] = [];
+      const validator: AnyValidatorFn = (spec) => {
+        executionOrder.push('custom');
+        return { valid: true, spec };
+      };
+
+      const pipeline = createValidationPipeline();
+      pipeline.addValidator(validator);
+
+      const removed = pipeline.removeValidator(validator);
+      expect(removed).toBe(true);
+
+      await pipeline.validate(validSpec(), testContext());
+      expect(executionOrder).not.toContain('custom');
+    });
+
+    it('returns false for validator not in pipeline', () => {
+      const pipeline = createValidationPipeline();
+      const removed = pipeline.removeValidator(() => ({ valid: true, spec: validSpec() }));
+      expect(removed).toBe(false);
+    });
+
+    it('cannot remove built-in validators', async () => {
+      const pipeline = createValidationPipeline();
+      const fakeBuiltInReference: AnyValidatorFn = () => ({
+        valid: false,
+        errors: [{ validator: 'component', message: 'not the built-in reference' }],
+      });
+
+      const removed = pipeline.removeValidator(fakeBuiltInReference);
+      expect(removed).toBe(false);
+
+      const invalidSpec = validSpec({
+        components: [{ id: 'unknown-1', componentType: 'NonExistent', props: {} }],
+      });
+      const validateResult = await pipeline.validate(invalidSpec, testContext());
+
+      expect(isError(validateResult)).toBe(true);
+      if (isError(validateResult)) {
+        const errors = validateResult.error.context?.errors as ValidationError[];
+        expect(errors.some((e) => e.validator === 'component')).toBe(true);
+      }
+    });
+  });
+
+  describe('validateWithRetry', () => {
+    it('retries on validation failure and succeeds on retry', async () => {
+      const pipeline = createValidationPipeline({ retry: { maxRetries: 3 } });
+      const trace = createTrace();
+      const context = testContext();
+      const badSpec = validSpec({
+        components: [{ id: 'x', componentType: 'UnknownWidget', props: {} }],
+      });
+      const goodSpec = validSpec();
+
+      const regenerate: RegenerateFn = vi.fn().mockResolvedValueOnce(ok(goodSpec));
+
+      const result = await pipeline.validateWithRetry(badSpec, context, regenerate, trace);
+      expect(isOk(result)).toBe(true);
+      expect(regenerate).toHaveBeenCalledTimes(1);
+    });
+
+    it('exhausts retries and returns FLUI_E023 with all attempts', async () => {
+      const pipeline = createValidationPipeline({ retry: { maxRetries: 2 } });
+      const trace = createTrace();
+      const context = testContext();
+      const badSpec = validSpec({
+        components: [{ id: 'x', componentType: 'UnknownWidget', props: {} }],
+      });
+
+      // All regeneration attempts return bad specs
+      const regenerate: RegenerateFn = vi.fn().mockResolvedValue(ok(badSpec));
+
+      const result = await pipeline.validateWithRetry(badSpec, context, regenerate, trace);
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        expect(result.error.code).toBe('FLUI_E023');
+        const attempts = result.error.context?.attempts as Array<{
+          attemptNumber: number;
+          retryPromptUsed?: string;
+        }>;
+        expect(attempts).toHaveLength(3); // initial + 2 retries
+        expect(attempts[0].attemptNumber).toBe(1);
+        expect(attempts[2].attemptNumber).toBe(3);
+        expect(attempts[0].retryPromptUsed).toContain('VALIDATION ERRORS FROM PREVIOUS ATTEMPT');
+        expect(attempts[2].retryPromptUsed).toBeUndefined();
+      }
+      expect(regenerate).toHaveBeenCalledTimes(2);
+    });
+
+    it('retry prompt includes original prompt and validation error details', async () => {
+      const pipeline = createValidationPipeline({ retry: { maxRetries: 1 } });
+      const trace = createTrace();
+      const context = testContext();
+      const badSpec = validSpec({
+        components: [{ id: 'x', componentType: 'UnknownWidget', props: {} }],
+      });
+      const originalPrompt = 'Generate a dashboard with a KPI card.';
+
+      const regenerate: RegenerateFn = vi.fn().mockResolvedValue(ok(badSpec));
+
+      await pipeline.validateWithRetry(
+        badSpec,
+        context,
+        regenerate,
+        trace,
+        undefined,
+        originalPrompt,
+      );
+
+      // The regenerate function should have been called with a prompt containing error info
+      const callArgs = (regenerate as ReturnType<typeof vi.fn>).mock.calls[0];
+      const retryPrompt = callArgs[0] as string;
+      expect(retryPrompt).toContain(originalPrompt);
+      expect(retryPrompt).toContain('VALIDATION ERRORS FROM PREVIOUS ATTEMPT');
+      expect(retryPrompt).toContain('Fix ALL of them');
+    });
+
+    it('default maxRetries is 3 when not configured', async () => {
+      const pipeline = createValidationPipeline(); // No retry config
+      const trace = createTrace();
+      const context = testContext();
+      const badSpec = validSpec({
+        components: [{ id: 'x', componentType: 'UnknownWidget', props: {} }],
+      });
+
+      const regenerate: RegenerateFn = vi.fn().mockResolvedValue(ok(badSpec));
+
+      const result = await pipeline.validateWithRetry(badSpec, context, regenerate, trace);
+      expect(isError(result)).toBe(true);
+      // 3 retries = regenerate called 3 times (initial attempt + 3 retries = 4 total attempts)
+      expect(regenerate).toHaveBeenCalledTimes(3);
+      if (isError(result)) {
+        const attempts = result.error.context?.attempts as Array<{ attemptNumber: number }>;
+        expect(attempts).toHaveLength(4);
+      }
+    });
+
+    it('respects AbortSignal between attempts', async () => {
+      const pipeline = createValidationPipeline({ retry: { maxRetries: 5 } });
+      const trace = createTrace();
+      const context = testContext();
+      const badSpec = validSpec({
+        components: [{ id: 'x', componentType: 'UnknownWidget', props: {} }],
+      });
+
+      const controller = new AbortController();
+
+      // Abort after first regeneration call
+      const regenerate: RegenerateFn = vi.fn().mockImplementation(async () => {
+        controller.abort();
+        return ok(badSpec);
+      });
+
+      const result = await pipeline.validateWithRetry(
+        badSpec,
+        context,
+        regenerate,
+        trace,
+        controller.signal,
+      );
+
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        expect(result.error.code).toBe('FLUI_E010');
+      }
+      // Should have stopped after 1 regeneration (not 5)
+      expect(regenerate).toHaveBeenCalledTimes(1);
+    });
+
+    it('records trace steps for each attempt', async () => {
+      const pipeline = createValidationPipeline({ retry: { maxRetries: 2 } });
+      const trace = createTrace();
+      const context = testContext();
+      const badSpec = validSpec({
+        components: [{ id: 'x', componentType: 'UnknownWidget', props: {} }],
+      });
+      const goodSpec = validSpec();
+
+      // Fail first, succeed on second
+      const regenerate: RegenerateFn = vi.fn().mockResolvedValueOnce(ok(goodSpec));
+
+      await pipeline.validateWithRetry(badSpec, context, regenerate, trace);
+
+      const validationSteps = trace.steps.filter(
+        (s) =>
+          s.module === 'validation' &&
+          (s.operation === 'retryAttempt' || s.operation === 'validateWithRetry'),
+      );
+      expect(validationSteps.length).toBeGreaterThanOrEqual(2);
+
+      // First step should be a failed attempt
+      const failStep = validationSteps.find((s) => s.metadata.success === false);
+      expect(failStep).toBeDefined();
+      expect(failStep!.metadata.attempt).toBe(1);
+      expect(failStep!.metadata.validationResult).toBeDefined();
+
+      // Last step should be a success
+      const successStep = validationSteps.find((s) => s.metadata.success === true);
+      expect(successStep).toBeDefined();
+      expect(successStep!.metadata.validationResult).toStrictEqual({ valid: true, errors: [] });
+    });
+
+    it('retry disabled when retry.enabled = false', async () => {
+      const pipeline = createValidationPipeline({ retry: { enabled: false, maxRetries: 5 } });
+      const trace = createTrace();
+      const context = testContext();
+      const badSpec = validSpec({
+        components: [{ id: 'x', componentType: 'UnknownWidget', props: {} }],
+      });
+
+      const regenerate: RegenerateFn = vi.fn();
+
+      const result = await pipeline.validateWithRetry(badSpec, context, regenerate, trace);
+
+      // Should just validate once without retrying
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        expect(result.error.code).toBe('FLUI_E020'); // Pipeline error, not retry exhaustion
+      }
+      expect(regenerate).not.toHaveBeenCalled();
+    });
+
+    it('additionalValidators config still works (backwards compatibility)', async () => {
+      const customValidator: AnyValidatorFn = () => ({
+        valid: false,
+        errors: [{ validator: 'custom-compat', message: 'Config-based validator works' }],
+      });
+
+      const pipeline = createValidationPipeline({
+        additionalValidators: [customValidator],
+        retry: { maxRetries: 1 },
+      });
+
+      const trace = createTrace();
+      const context = testContext();
+      const spec = validSpec();
+
+      const regenerate: RegenerateFn = vi.fn().mockResolvedValue(ok(validSpec()));
+
+      const result = await pipeline.validateWithRetry(spec, context, regenerate, trace);
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        // All retries should have the custom validator error
+        expect(result.error.code).toBe('FLUI_E023');
+      }
+    });
+
+    it('custom async validator works in retry flow', async () => {
+      const customAsyncValidator: AsyncValidatorFn = async (spec) => {
+        await Promise.resolve();
+        if (spec.metadata?.generatedAt === 999) {
+          return { valid: true, spec };
+        }
+        return {
+          valid: false,
+          errors: [{ validator: 'custom-async', message: 'Wrong timestamp' }],
+        };
+      };
+
+      const pipeline = createValidationPipeline({ retry: { maxRetries: 2 } });
+      pipeline.addValidator(customAsyncValidator);
+
+      const trace = createTrace();
+      const context = testContext();
+      const badSpec = validSpec({ metadata: { generatedAt: 0 } });
+      const goodSpec = validSpec({ metadata: { generatedAt: 999 } });
+
+      const regenerate: RegenerateFn = vi.fn().mockResolvedValueOnce(ok(goodSpec));
+
+      const result = await pipeline.validateWithRetry(badSpec, context, regenerate, trace);
+      expect(isOk(result)).toBe(true);
+    });
+
+    it('returns regeneration error when regenerate fails', async () => {
+      const pipeline = createValidationPipeline({ retry: { maxRetries: 3 } });
+      const trace = createTrace();
+      const context = testContext();
+      const badSpec = validSpec({
+        components: [{ id: 'x', componentType: 'UnknownWidget', props: {} }],
+      });
+
+      const regenerate: RegenerateFn = vi
+        .fn()
+        .mockResolvedValueOnce(err(new FluiError('FLUI_E014', 'connector', 'LLM API error')));
+
+      const result = await pipeline.validateWithRetry(badSpec, context, regenerate, trace);
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        expect(result.error.code).toBe('FLUI_E014');
+      }
+    });
+  });
+
+  describe('buildRetryPrompt', () => {
+    it('formats validation errors with validator name, message, and field', () => {
+      const errors: ValidationError[] = [
+        { validator: 'schema', message: 'Invalid version', field: 'version' },
+        {
+          validator: 'component',
+          message: 'Unknown component',
+          field: 'components[0].componentType',
+        },
+      ];
+
+      const prompt = buildRetryPrompt('Generate a dashboard', errors);
+
+      expect(prompt).toContain('Generate a dashboard');
+      expect(prompt).toContain('VALIDATION ERRORS FROM PREVIOUS ATTEMPT');
+      expect(prompt).toContain('[schema] Invalid version (field: version)');
+      expect(prompt).toContain(
+        '[component] Unknown component (field: components[0].componentType)',
+      );
+      expect(prompt).toContain('Fix ALL of them');
+    });
+
+    it('handles errors without field paths', () => {
+      const errors: ValidationError[] = [
+        { validator: 'custom-check', message: 'Global constraint violated' },
+      ];
+
+      const prompt = buildRetryPrompt('Original prompt', errors);
+
+      expect(prompt).toContain('[custom-check] Global constraint violated');
+      expect(prompt).not.toContain('(field:');
+    });
+
+    it('numbers multiple errors sequentially', () => {
+      const errors: ValidationError[] = [
+        { validator: 'a', message: 'Error A' },
+        { validator: 'b', message: 'Error B' },
+        { validator: 'c', message: 'Error C' },
+      ];
+
+      const prompt = buildRetryPrompt('', errors);
+
+      expect(prompt).toContain('1. [a] Error A');
+      expect(prompt).toContain('2. [b] Error B');
+      expect(prompt).toContain('3. [c] Error C');
     });
   });
 });

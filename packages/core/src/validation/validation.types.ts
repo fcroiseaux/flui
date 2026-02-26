@@ -1,3 +1,4 @@
+import type { Result } from '../errors';
 import type { ComponentRegistry } from '../registry';
 import type { UISpecification } from '../spec';
 
@@ -56,9 +57,52 @@ export type AsyncValidatorFn = (
 export type AnyValidatorFn = ValidatorFn | AsyncValidatorFn;
 
 /**
+ * Configuration for validation retry behavior.
+ */
+export interface ValidationRetryConfig {
+  /** Maximum number of retry attempts. Defaults to 3. */
+  maxRetries?: number | undefined;
+  /** Whether retry is enabled. Defaults to true when config is provided. */
+  enabled?: boolean | undefined;
+}
+
+/**
+ * Records a single validation attempt during retry.
+ */
+export interface ValidationAttempt {
+  /** 1-based attempt number */
+  attemptNumber: number;
+  /** Validation errors from this attempt */
+  errors: ValidationError[];
+  /** The retry prompt used for this attempt (absent for first attempt) */
+  retryPromptUsed?: string | undefined;
+}
+
+/**
+ * Result of a validation with retry, including attempt history.
+ */
+export interface ValidationRetryResult {
+  /** Final validation result */
+  finalResult: Result<UISpecification>;
+  /** All validation attempts made */
+  attempts: ValidationAttempt[];
+}
+
+/**
+ * Callback function for regenerating a UISpecification from a retry prompt.
+ * Provided by the caller (generation orchestrator) to maintain dependency inversion.
+ */
+export type RegenerateFn = (
+  retryPrompt: string,
+  signal?: AbortSignal,
+) => Promise<Result<UISpecification>>;
+
+/**
  * Configuration for creating a validation pipeline.
  */
 export interface ValidationPipelineConfig {
   /** Optional custom validators to append after core validators */
   additionalValidators?: AnyValidatorFn[] | undefined;
+  /** Optional retry configuration for validateWithRetry */
+  retry?: ValidationRetryConfig | undefined;
 }

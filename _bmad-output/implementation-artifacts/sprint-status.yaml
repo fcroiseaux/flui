@@ -75,7 +75,7 @@ development_status:
   epic-5: in-progress
   5-1-validation-pipeline-and-core-validators-schema-component-props: done
   5-2-accessibility-and-data-authorization-validators: done
-  5-3-custom-validators-and-validation-retry: backlog
+  5-3-custom-validators-and-validation-retry: done
   epic-5-retrospective: optional
 
   # Epic 6: React Rendering & Interaction
