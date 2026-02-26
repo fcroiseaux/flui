@@ -88,6 +88,12 @@ export const FLUI_E022 = 'FLUI_E022' as const;
 /** Validation retry exhausted: all retry attempts failed validation */
 export const FLUI_E023 = 'FLUI_E023' as const;
 
+/** Cache corruption detected: stored specification failed schema validation */
+export const FLUI_E024 = 'FLUI_E024' as const;
+
+/** Cache storage unavailable: L2/L3 storage backend not accessible */
+export const FLUI_E025 = 'FLUI_E025' as const;
+
 export type DefinedFluiErrorCode =
   | typeof FLUI_E001
   | typeof FLUI_E002
@@ -111,7 +117,9 @@ export type DefinedFluiErrorCode =
   | typeof FLUI_E020
   | typeof FLUI_E021
   | typeof FLUI_E022
-  | typeof FLUI_E023;
+  | typeof FLUI_E023
+  | typeof FLUI_E024
+  | typeof FLUI_E025;
 
 /**
  * Human-readable descriptions for all defined error codes.
@@ -141,4 +149,6 @@ export const ERROR_CODE_DESCRIPTIONS: Record<DefinedFluiErrorCode, string> = {
   FLUI_E021: 'Accessibility validation failed: WCAG 2.1 AA compliance issues detected',
   FLUI_E022: 'Data authorization validation failed: unauthorized data identifiers referenced',
   FLUI_E023: 'Validation retry exhausted: all retry attempts failed validation',
+  FLUI_E024: 'Cache corruption detected: stored specification failed schema validation',
+  FLUI_E025: 'Cache storage unavailable: L2/L3 storage backend not accessible',
 };

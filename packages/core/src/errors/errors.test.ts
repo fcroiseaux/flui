@@ -203,8 +203,8 @@ describe('errors', () => {
       }
     });
 
-    it('ERROR_CODE_DESCRIPTIONS has exactly 23 entries', () => {
-      expect(Object.keys(ERROR_CODE_DESCRIPTIONS)).toHaveLength(23);
+    it('ERROR_CODE_DESCRIPTIONS has exactly 25 entries', () => {
+      expect(Object.keys(ERROR_CODE_DESCRIPTIONS)).toHaveLength(25);
     });
 
     it('ErrorCategory type accepts all valid categories', () => {

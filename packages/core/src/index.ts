@@ -1,5 +1,16 @@
 // @flui/core - Core generation engine
 
+// cache/ module
+export type {
+  CacheConfig,
+  CacheEntry,
+  CacheKey,
+  CacheManager,
+  CacheResult,
+  CacheStats,
+  CacheStorage,
+} from './cache';
+export { buildCacheKey, createCacheManager } from './cache';
 // context/ module
 export type {
   AggregatedContext,
@@ -57,6 +68,8 @@ export {
   FLUI_E021,
   FLUI_E022,
   FLUI_E023,
+  FLUI_E024,
+  FLUI_E025,
   FluiError,
   isError,
   isOk,

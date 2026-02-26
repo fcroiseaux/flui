@@ -28,6 +28,14 @@
     "dev": "tsup --watch",
     "test": "vitest run"
   },
+  "peerDependencies": {
+    "idb-keyval": "^6.2.0"
+  },
+  "peerDependenciesMeta": {
+    "idb-keyval": {
+      "optional": true
+    }
+  },
   "dependencies": {
     "zod": "4.3.6"
   },
