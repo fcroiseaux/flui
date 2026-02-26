@@ -2,16 +2,12 @@
 
 // Components
 export { FluiProvider, useFluiContext } from './FluiProvider';
-export { LiquidView } from './LiquidView';
-
 // Hooks
 export { useLiquidView } from './hooks';
-
-// Renderer
-export { renderSpec, createInteractionStore, createViewStateStore, useInteractionStore, useViewState } from './renderer';
-
+export { LiquidView } from './LiquidView';
 // Types
 export type {
+  AriaAnnouncementConfig,
   FluiContextValue,
   FluiProviderProps,
   FluiReactConfig,
@@ -20,7 +16,20 @@ export type {
   LiquidViewProps,
   LiquidViewState,
   RenderSpecOptions,
+  TransitionConfig,
+  TransitionState,
   UseLiquidViewOptions,
   UseLiquidViewResult,
   ViewStateStore,
 } from './react.types';
+// Renderer
+export {
+  AriaLiveRegion,
+  CrossfadeTransition,
+  createInteractionStore,
+  createViewStateStore,
+  renderSpec,
+  useFocusManagement,
+  useInteractionStore,
+  useViewState,
+} from './renderer';

@@ -125,5 +125,14 @@ function renderComponentSpec(
   }
 
   const children = spec.children?.map((child) => renderComponentSpec(child, registry, options));
-  return createElement(Component, { ...mergedProps, key: spec.key ?? spec.id }, children);
+  const componentProps: Record<string, unknown> = {
+    ...mergedProps,
+    key: spec.key ?? spec.id,
+  };
+
+  if (options?.focusTracking) {
+    componentProps['data-flui-id'] = spec.id;
+  }
+
+  return createElement(Component, componentProps, children);
 }

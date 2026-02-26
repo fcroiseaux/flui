@@ -207,7 +207,17 @@ describe('LiquidView', () => {
       });
 
       expect(screen.getByText('Generated Button')).toBeTruthy();
-      expect(screen.queryByTestId('fallback')).toBeNull();
+
+      // After transition completes, fallback is removed from the active content.
+      // With crossfade, the exiting fallback may still be in DOM briefly — wait for cleanup.
+      await waitFor(() => {
+        // The fallback should no longer be visible once transition completes
+        const fallbackEl = screen.queryByTestId('fallback');
+        if (fallbackEl) {
+          // If still present, it should be in the exiting (aria-hidden) layer
+          expect(fallbackEl.closest('[aria-hidden="true"]')).toBeTruthy();
+        }
+      });
     });
   });
 
@@ -411,15 +421,17 @@ describe('LiquidView', () => {
         expect(screen.getByTestId('rendered-button')).toBeTruthy();
       });
 
-      const wrapper = screen.getByTestId('rendered-button').parentElement;
-      expect(wrapper?.className).toBe('custom-class');
-      expect(wrapper?.style.padding).toBe('16px');
+      // The container div (data-flui-container) receives className and style
+      const container = screen.getByTestId('rendered-button').closest('[data-flui-container]');
+      expect(container).toBeTruthy();
+      expect((container as HTMLElement).className).toBe('custom-class');
+      expect((container as HTMLElement).style.padding).toBe('16px');
     });
 
-    it('does not render wrapper div when no className or style', async () => {
+    it('always renders container div even when no className or style', async () => {
       const registry = createTestRegistry();
 
-      const { container } = render(
+      render(
         <FluiProvider registry={registry} config={createMockConfig()}>
           <LiquidView intent="show a button" fallback={<div>Loading</div>} />
         </FluiProvider>,
@@ -429,9 +441,10 @@ describe('LiquidView', () => {
         expect(screen.getByTestId('rendered-button')).toBeTruthy();
       });
 
-      // The button should be a direct child, no extra wrapper div
+      // The button should be inside the container div (needed for transitions, focus, ARIA)
       const button = screen.getByTestId('rendered-button');
-      expect(button.parentElement).toBe(container);
+      const container = button.closest('[data-flui-container]');
+      expect(container).toBeTruthy();
     });
   });
 
@@ -598,6 +611,145 @@ describe('LiquidView', () => {
       await waitFor(() => {
         expect((screen.getByTestId('input') as HTMLInputElement).value).toBe('saved-value');
       });
+    });
+  });
+
+  describe('transition integration', () => {
+    it('applies crossfade transition on spec change', async () => {
+      const registry = createTestRegistry();
+      const firstSpec = createTestSpec();
+      const secondSpec: UISpecification = {
+        version: '1.0',
+        components: [
+          { id: 'txt1', componentType: 'TestText', props: { content: 'Updated content' } },
+        ],
+        layout: { type: 'stack' },
+        interactions: [],
+        metadata: { generatedAt: Date.now() + 1000 },
+      };
+
+      let generationCount = 0;
+      mockGenerate.mockImplementation(async () => {
+        generationCount += 1;
+        return ok(generationCount === 1 ? firstSpec : secondSpec);
+      });
+      mockValidate.mockImplementation(async (spec: unknown) => ok(spec as UISpecification));
+
+      const { rerender } = render(
+        <FluiProvider registry={registry} config={createMockConfig()}>
+          <LiquidView intent="show a button" fallback={<div>Loading</div>} />
+        </FluiProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('rendered-button')).toBeTruthy();
+      });
+
+      // Trigger second generation
+      rerender(
+        <FluiProvider registry={registry} config={createMockConfig()}>
+          <LiquidView intent="show text" fallback={<div>Loading</div>} />
+        </FluiProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Updated content')).toBeTruthy();
+      });
+    });
+
+    it('transitions disabled via config renders without crossfade wrapper', async () => {
+      const registry = createTestRegistry();
+
+      render(
+        <FluiProvider registry={registry} config={createMockConfig()}>
+          <LiquidView
+            intent="show a button"
+            fallback={<div>Loading</div>}
+            transition={{ enabled: false }}
+          />
+        </FluiProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('rendered-button')).toBeTruthy();
+      });
+
+      // No transition wrapper should be present
+      expect(screen.getByTestId('rendered-button').closest('[data-flui-transition]')).toBeNull();
+    });
+
+    it('backward compatibility: LiquidView without transition props works as before', async () => {
+      const registry = createTestRegistry();
+
+      render(
+        <FluiProvider registry={registry} config={createMockConfig()}>
+          <LiquidView intent="show a button" fallback={<div>Loading</div>} />
+        </FluiProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('rendered-button')).toBeTruthy();
+      });
+
+      // Content renders correctly, container exists
+      expect(screen.getByText('Generated Button')).toBeTruthy();
+      expect(screen.getByTestId('rendered-button').closest('[data-flui-container]')).toBeTruthy();
+    });
+
+    it('shows ARIA announcement on transition', async () => {
+      const registry = createTestRegistry();
+      const specWithTitle: UISpecification = {
+        version: '1.0',
+        components: [{ id: 'btn1', componentType: 'TestButton', props: { label: 'Hello' } }],
+        layout: { type: 'stack' },
+        interactions: [],
+        metadata: { generatedAt: Date.now(), custom: { title: 'Dashboard loaded' } },
+      };
+
+      mockGenerate.mockResolvedValue(ok(specWithTitle));
+      mockValidate.mockResolvedValue(ok(specWithTitle));
+
+      render(
+        <FluiProvider registry={registry} config={createMockConfig()}>
+          <LiquidView intent="show dashboard" fallback={<div>Loading</div>} />
+        </FluiProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('rendered-button')).toBeTruthy();
+      });
+
+      // ARIA live region should announce the transition
+      const statusRegion = screen.getByRole('status');
+      expect(statusRegion).toBeTruthy();
+      expect(statusRegion.textContent).toBe('Dashboard loaded');
+    });
+
+    it('renders fallback within container on error with transitions enabled', async () => {
+      const registry = createTestRegistry();
+      mockGenerate.mockResolvedValue(
+        err(new FluiError(FLUI_E010, 'generation', 'Generation failed')),
+      );
+
+      render(
+        <FluiProvider registry={registry} config={createMockConfig()}>
+          <LiquidView
+            intent="show a button"
+            fallback={<div data-testid="error-fb">Error fallback</div>}
+          />
+        </FluiProvider>,
+      );
+
+      await waitFor(() => {
+        // At least one error-fb element should be present
+        expect(screen.getAllByTestId('error-fb').length).toBeGreaterThan(0);
+      });
+
+      // All fallback elements should be within the data-flui-container
+      const fallbacks = screen.getAllByTestId('error-fb');
+      for (const fb of fallbacks) {
+        expect(fb.closest('[data-flui-container]')).toBeTruthy();
+      }
     });
   });
 });

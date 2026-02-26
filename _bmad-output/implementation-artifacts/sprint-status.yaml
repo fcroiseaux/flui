@@ -82,7 +82,7 @@ development_status:
   epic-6: in-progress
   6-1-liquidview-component-and-fallback-rendering: done
   6-2-interaction-wiring-and-view-state-management: done
-  6-3-visual-transitions-and-accessibility: backlog
+  6-3-visual-transitions-and-accessibility: done
   epic-6-retrospective: optional
 
   # Epic 7: Caching, Cost Control & Concurrency

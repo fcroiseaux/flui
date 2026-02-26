@@ -1,9 +1,9 @@
-import { ComponentRegistry, type InteractionSpec, type UISpecification } from '@flui/core';
+import { ComponentRegistry, type UISpecification } from '@flui/core';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-import type { InteractionStore, RenderSpecOptions, ViewStateStore } from '../react.types';
+import type { RenderSpecOptions } from '../react.types';
 
 import { createInteractionStore } from './interaction-wiring';
 import { renderSpec } from './spec-renderer';
@@ -28,7 +28,7 @@ function createRegistryWithComponents(): ComponentRegistry {
     category: 'input',
     description: 'A button',
     accepts: z.object({ label: z.string() }),
-    component: ({ label }: { label: string }) => <button>{label}</button>,
+    component: ({ label }: { label: string }) => <button type="button">{label}</button>,
   });
 
   registry.register({
@@ -60,9 +60,7 @@ describe('renderSpec', () => {
     it('renders a single component with props', () => {
       const registry = createRegistryWithComponents();
       const spec = createTestSpec({
-        components: [
-          { id: 'btn1', componentType: 'TestButton', props: { label: 'Click me' } },
-        ],
+        components: [{ id: 'btn1', componentType: 'TestButton', props: { label: 'Click me' } }],
       });
 
       render(<>{renderSpec(spec, registry)}</>);
@@ -88,9 +86,7 @@ describe('renderSpec', () => {
     it('passes correct props to components', () => {
       const registry = createRegistryWithComponents();
       const spec = createTestSpec({
-        components: [
-          { id: 'card1', componentType: 'TestCard', props: { title: 'My Card' } },
-        ],
+        components: [{ id: 'card1', componentType: 'TestCard', props: { title: 'My Card' } }],
       });
 
       render(<>{renderSpec(spec, registry)}</>);
@@ -156,9 +152,7 @@ describe('renderSpec', () => {
     it('renders nothing for missing components without crashing', () => {
       const registry = createRegistryWithComponents();
       const spec = createTestSpec({
-        components: [
-          { id: 'unknown1', componentType: 'NonExistentWidget', props: {} },
-        ],
+        components: [{ id: 'unknown1', componentType: 'NonExistentWidget', props: {} }],
       });
 
       // Should not throw
@@ -213,9 +207,7 @@ describe('renderSpec', () => {
     it('uses spec.id as fallback key', () => {
       const registry = createRegistryWithComponents();
       const spec = createTestSpec({
-        components: [
-          { id: 'btn-id-123', componentType: 'TestButton', props: { label: 'ID key' } },
-        ],
+        components: [{ id: 'btn-id-123', componentType: 'TestButton', props: { label: 'ID key' } }],
       });
 
       render(<>{renderSpec(spec, registry)}</>);
@@ -237,13 +229,18 @@ describe('renderSpec', () => {
       });
 
       const spec = createTestSpec({
-        components: [
-          { id: 'display-1', componentType: 'Display', props: {} },
-        ],
+        components: [{ id: 'display-1', componentType: 'Display', props: {} }],
       });
 
       const interactionStore = createInteractionStore(
-        [{ source: 'filter', target: 'display-1', event: 'onChange', dataMapping: { value: 'filterCategory' } }],
+        [
+          {
+            source: 'filter',
+            target: 'display-1',
+            event: 'onChange',
+            dataMapping: { value: 'filterCategory' },
+          },
+        ],
         new Set(['filter', 'display-1']),
       );
 
@@ -271,9 +268,7 @@ describe('renderSpec', () => {
       });
 
       const spec = createTestSpec({
-        components: [
-          { id: 'input-1', componentType: 'Input', props: {} },
-        ],
+        components: [{ id: 'input-1', componentType: 'Input', props: {} }],
       });
 
       const viewStateStore = createViewStateStore();
@@ -298,9 +293,7 @@ describe('renderSpec', () => {
       });
 
       const spec = createTestSpec({
-        components: [
-          { id: 'field-1', componentType: 'Field', props: { value: 'base' } },
-        ],
+        components: [{ id: 'field-1', componentType: 'Field', props: { value: 'base' } }],
       });
 
       const interactionStore = createInteractionStore(
@@ -330,18 +323,25 @@ describe('renderSpec', () => {
         description: 'Button',
         accepts: z.object({}),
         component: ({ onClick }: { onClick?: (...args: unknown[]) => void }) => (
-          <button data-testid="btn" onClick={() => onClick?.('click-data')}>Click</button>
+          <button type="button" data-testid="btn" onClick={() => onClick?.('click-data')}>
+            Click
+          </button>
         ),
       });
 
       const spec = createTestSpec({
-        components: [
-          { id: 'btn-1', componentType: 'Btn', props: { onClick: originalHandler } },
-        ],
+        components: [{ id: 'btn-1', componentType: 'Btn', props: { onClick: originalHandler } }],
       });
 
       const interactionStore = createInteractionStore(
-        [{ source: 'btn-1', target: 'target-1', event: 'onClick', dataMapping: { value: 'clickValue' } }],
+        [
+          {
+            source: 'btn-1',
+            target: 'target-1',
+            event: 'onClick',
+            dataMapping: { value: 'clickValue' },
+          },
+        ],
         new Set(['btn-1', 'target-1']),
       );
 
@@ -360,9 +360,7 @@ describe('renderSpec', () => {
     it('renderSpec without options works identical to before', () => {
       const registry = createRegistryWithComponents();
       const spec = createTestSpec({
-        components: [
-          { id: 'btn1', componentType: 'TestButton', props: { label: 'No options' } },
-        ],
+        components: [{ id: 'btn1', componentType: 'TestButton', props: { label: 'No options' } }],
       });
 
       // Call without third argument — should work exactly as before
@@ -382,6 +380,44 @@ describe('renderSpec', () => {
       render(<>{renderSpec(spec, registry, undefined)}</>);
 
       expect(screen.getByText('Undefined opts')).toBeTruthy();
+    });
+
+    it('does not add data-flui-id by default', () => {
+      const registry = new ComponentRegistry();
+      registry.register({
+        name: 'Passthrough',
+        category: 'display',
+        description: 'Pass-through element',
+        accepts: z.object({}),
+        component: (props: Record<string, unknown>) => <div data-testid="passthrough" {...props} />,
+      });
+
+      const spec = createTestSpec({
+        components: [{ id: 'cmp-1', componentType: 'Passthrough', props: {} }],
+      });
+
+      render(<>{renderSpec(spec, registry)}</>);
+
+      expect(screen.getByTestId('passthrough').getAttribute('data-flui-id')).toBeNull();
+    });
+
+    it('adds data-flui-id when focus tracking is enabled', () => {
+      const registry = new ComponentRegistry();
+      registry.register({
+        name: 'Passthrough',
+        category: 'display',
+        description: 'Pass-through element',
+        accepts: z.object({}),
+        component: (props: Record<string, unknown>) => <div data-testid="passthrough" {...props} />,
+      });
+
+      const spec = createTestSpec({
+        components: [{ id: 'cmp-2', componentType: 'Passthrough', props: {} }],
+      });
+
+      render(<>{renderSpec(spec, registry, { focusTracking: true })}</>);
+
+      expect(screen.getByTestId('passthrough').getAttribute('data-flui-id')).toBe('cmp-2');
     });
   });
 });

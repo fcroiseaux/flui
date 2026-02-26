@@ -10,6 +10,34 @@ import type {
 import type { CSSProperties, ReactNode } from 'react';
 
 /**
+ * Configuration for crossfade transitions between spec replacements.
+ * CSS-only transitions — no animation library dependency.
+ */
+export interface TransitionConfig {
+  /** Whether transitions are enabled. Defaults to true. */
+  enabled?: boolean;
+  /** Duration of the crossfade transition in milliseconds. Defaults to 200. */
+  durationMs?: number;
+  /** CSS timing function for the transition. Defaults to 'ease-in-out'. */
+  timingFunction?: string;
+}
+
+/**
+ * Represents the current phase of a crossfade transition.
+ */
+export type TransitionState = 'idle' | 'entering' | 'exiting';
+
+/**
+ * Configuration for ARIA live region announcements during spec transitions.
+ */
+export interface AriaAnnouncementConfig {
+  /** Politeness level for the ARIA live region. Defaults to 'polite'. */
+  politeness?: 'polite' | 'assertive';
+  /** Custom function to format the announcement message from the spec. */
+  formatMessage?: (spec: UISpecification) => string;
+}
+
+/**
  * Discriminated union representing the LiquidView lifecycle states.
  * State transitions are strict — never skip states, never invent new ones.
  */
@@ -41,6 +69,10 @@ export interface LiquidViewProps {
   className?: string | undefined;
   /** Optional inline styles for the wrapper element. */
   style?: CSSProperties | undefined;
+  /** Optional transition configuration for crossfade animations between spec changes. */
+  transition?: TransitionConfig | undefined;
+  /** Optional ARIA announcement configuration for screen reader notifications during transitions. */
+  ariaAnnouncement?: AriaAnnouncementConfig | undefined;
 }
 
 /**
@@ -150,6 +182,8 @@ export interface RenderSpecOptions {
   interactionStore?: InteractionStore | undefined;
   /** View state store for persisting component state. */
   viewStateStore?: ViewStateStore | undefined;
+  /** Enables data-flui-id pass-through on rendered components for focus tracking. */
+  focusTracking?: boolean | undefined;
   /** Callback for interaction wiring issues. */
   onInteractionIssue?: ((issue: InteractionIssue) => void) | undefined;
 }
