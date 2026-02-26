@@ -1,4 +1,5 @@
 import {
+  type ComponentSpec,
   createGenerationOrchestrator,
   createTrace,
   createValidationPipeline,
@@ -18,6 +19,7 @@ import type {
   UseLiquidViewOptions,
   UseLiquidViewResult,
 } from '../react.types';
+import { useViewState } from '../renderer/view-state';
 
 /**
  * Normalizes a string or IntentObject prop into a core Intent for parseIntent().
@@ -40,6 +42,21 @@ function normalizeIntent(intent: string | IntentObject): Intent {
 }
 
 /**
+ * Recursively collects all component IDs from a component tree.
+ */
+function collectComponentIds(components: ComponentSpec[]): Set<string> {
+  const ids = new Set<string>();
+  function walk(specs: ComponentSpec[]) {
+    for (const spec of specs) {
+      ids.add(spec.id);
+      if (spec.children) walk(spec.children);
+    }
+  }
+  walk(components);
+  return ids;
+}
+
+/**
  * Hook that manages the LiquidView generation lifecycle.
  * Watches intent changes and drives: idle → generating → validating → rendering | error.
  */
@@ -49,6 +66,7 @@ export function useLiquidView(
 ): UseLiquidViewResult {
   const [state, setState] = useState<LiquidViewState>({ status: 'idle' });
   const abortRef = useRef<AbortController | null>(null);
+  const viewStateStore = useViewState();
 
   // Stable reference to callbacks to avoid re-triggering effects
   const onStateChangeRef = useRef(options.onStateChange);
@@ -167,8 +185,12 @@ export function useLiquidView(
         return;
       }
 
+      // Reconcile view state: prune orphaned component state, preserve matching IDs
+      const newComponentIds = collectComponentIds(validResult.value.components);
+      viewStateStore.reconcile(newComponentIds);
+
       // Transition to rendering
-      updateState({ status: 'rendering', spec: validResult.value });
+      updateState({ status: 'rendering', spec: validResult.value, trace });
     };
 
     runGeneration().catch((error: unknown) => {
@@ -183,7 +205,7 @@ export function useLiquidView(
             );
       updateState({ status: 'error', error: fluiError, fallback: true });
     });
-  }, [options.intent, ctx.registry, updateState]);
+  }, [options.intent, ctx.registry, updateState, viewStateStore]);
 
-  return { state };
+  return { state, viewStateStore };
 }

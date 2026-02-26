@@ -1,4 +1,12 @@
-import type { ComponentRegistry, FluiError, GenerationConfig, GenerationTrace, LLMConnector, UISpecification, ValidationPipelineConfig } from '@flui/core';
+import type {
+  ComponentRegistry,
+  FluiError,
+  GenerationConfig,
+  GenerationTrace,
+  LLMConnector,
+  UISpecification,
+  ValidationPipelineConfig,
+} from '@flui/core';
 import type { CSSProperties, ReactNode } from 'react';
 
 /**
@@ -9,7 +17,7 @@ export type LiquidViewState =
   | { status: 'idle' }
   | { status: 'generating'; trace: GenerationTrace }
   | { status: 'validating'; rawSpec: unknown }
-  | { status: 'rendering'; spec: UISpecification }
+  | { status: 'rendering'; spec: UISpecification; trace: GenerationTrace }
   | { status: 'error'; error: FluiError; fallback: true };
 
 /**
@@ -91,4 +99,57 @@ export interface UseLiquidViewOptions {
 export interface UseLiquidViewResult {
   /** Current LiquidView state. */
   state: LiquidViewState;
+  /** View state store for persisting component state across regenerations. */
+  viewStateStore: ViewStateStore;
+}
+
+/**
+ * Store for persisting component state across regenerations.
+ * Components are identified by their ComponentSpec.id.
+ */
+export interface ViewStateStore {
+  /** Get stored state for a component, or empty object if none. */
+  getState(componentId: string): Record<string, unknown>;
+  /** Shallow-merge update into existing state for a component. */
+  setState(componentId: string, update: Record<string, unknown>): void;
+  /** Remove state for components not in newComponentIds. Returns count of cleaned entries. */
+  reconcile(newComponentIds: Set<string>): number;
+  /** Return a read-only copy of the entire state map (for testing/debugging). */
+  getSnapshot(): Map<string, Record<string, unknown>>;
+}
+
+/**
+ * Store for wiring interactions between components based on InteractionSpec.
+ */
+export interface InteractionStore {
+  /** Get interaction-derived props for a target component. */
+  getTargetProps(componentId: string): Record<string, unknown>;
+  /** Get event handler map for a source component. */
+  getSourceHandlers(componentId: string): Record<string, (...args: unknown[]) => void>;
+  /** Issues encountered during interaction wiring. */
+  issues: InteractionIssue[];
+}
+
+/**
+ * Describes an issue encountered during interaction wiring.
+ */
+export interface InteractionIssue {
+  /** Type of issue: source or target component not found. */
+  type: 'missing-source' | 'missing-target';
+  /** Index of the interaction in the interactions array. */
+  interactionIndex: number;
+  /** The component ID that was not found. */
+  componentId: string;
+}
+
+/**
+ * Options for the spec renderer to integrate interaction wiring and view state.
+ */
+export interface RenderSpecOptions {
+  /** Interaction store for data flow between components. */
+  interactionStore?: InteractionStore | undefined;
+  /** View state store for persisting component state. */
+  viewStateStore?: ViewStateStore | undefined;
+  /** Callback for interaction wiring issues. */
+  onInteractionIssue?: ((issue: InteractionIssue) => void) | undefined;
 }

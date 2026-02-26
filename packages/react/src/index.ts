@@ -8,15 +8,19 @@ export { LiquidView } from './LiquidView';
 export { useLiquidView } from './hooks';
 
 // Renderer
-export { renderSpec } from './renderer';
+export { renderSpec, createInteractionStore, createViewStateStore, useInteractionStore, useViewState } from './renderer';
 
 // Types
 export type {
   FluiContextValue,
   FluiProviderProps,
   FluiReactConfig,
+  InteractionIssue,
+  InteractionStore,
   LiquidViewProps,
   LiquidViewState,
+  RenderSpecOptions,
   UseLiquidViewOptions,
   UseLiquidViewResult,
+  ViewStateStore,
 } from './react.types';

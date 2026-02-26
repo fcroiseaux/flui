@@ -81,7 +81,7 @@ development_status:
   # Epic 6: React Rendering & Interaction
   epic-6: in-progress
   6-1-liquidview-component-and-fallback-rendering: done
-  6-2-interaction-wiring-and-view-state-management: backlog
+  6-2-interaction-wiring-and-view-state-management: done
   6-3-visual-transitions-and-accessibility: backlog
   epic-6-retrospective: optional
 

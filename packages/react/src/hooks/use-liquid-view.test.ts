@@ -402,4 +402,93 @@ describe('useLiquidView', () => {
       });
     });
   });
+
+  describe('viewStateStore', () => {
+    it('returns viewStateStore in result', async () => {
+      const ctx = createTestContext(createMockConfig());
+      const { result } = renderHook(() => useLiquidView({ intent: 'show a button' }, ctx));
+
+      await waitFor(() => {
+        expect(result.current.state.status).toBe('rendering');
+      });
+
+      expect(result.current.viewStateStore).toBeDefined();
+      expect(typeof result.current.viewStateStore.getState).toBe('function');
+      expect(typeof result.current.viewStateStore.setState).toBe('function');
+      expect(typeof result.current.viewStateStore.reconcile).toBe('function');
+      expect(typeof result.current.viewStateStore.getSnapshot).toBe('function');
+    });
+
+    it('viewStateStore is available even before generation completes', () => {
+      const ctx = createTestContext(createMockConfig());
+      // No intent — stays idle
+      const { result } = renderHook(() => useLiquidView({}, ctx));
+
+      expect(result.current.viewStateStore).toBeDefined();
+      expect(result.current.viewStateStore.getSnapshot().size).toBe(0);
+    });
+
+    it('reconcile cleans orphaned state when spec changes', async () => {
+      const spec1: UISpecification = {
+        version: '1.0',
+        components: [
+          { id: 'comp-a', componentType: 'TestButton', props: { label: 'A' } },
+          { id: 'comp-b', componentType: 'TestButton', props: { label: 'B' } },
+        ],
+        layout: { type: 'stack' },
+        interactions: [],
+        metadata: { generatedAt: Date.now() },
+      };
+
+      const spec2: UISpecification = {
+        version: '1.0',
+        components: [
+          { id: 'comp-a', componentType: 'TestButton', props: { label: 'A updated' } },
+          // comp-b removed, comp-c added
+          { id: 'comp-c', componentType: 'TestButton', props: { label: 'C' } },
+        ],
+        layout: { type: 'stack' },
+        interactions: [],
+        metadata: { generatedAt: Date.now() },
+      };
+
+      let callCount = 0;
+      mockGenerate.mockImplementation(async () => {
+        callCount++;
+        return ok(callCount === 1 ? spec1 : spec2);
+      });
+      mockValidate.mockImplementation(async (spec: unknown) => ok(spec as UISpecification));
+
+      const ctx = createTestContext(createMockConfig());
+      const { result, rerender } = renderHook(
+        ({ intent }: { intent: string }) => useLiquidView({ intent }, ctx),
+        { initialProps: { intent: 'first' } },
+      );
+
+      // Wait for first rendering
+      await waitFor(() => {
+        expect(result.current.state.status).toBe('rendering');
+      });
+
+      // Set state for both components
+      result.current.viewStateStore.setState('comp-a', { value: 'A-state' });
+      result.current.viewStateStore.setState('comp-b', { value: 'B-state' });
+
+      // Trigger regeneration
+      rerender({ intent: 'second' });
+
+      await waitFor(() => {
+        // Wait for second generation to complete
+        expect(mockGenerate).toHaveBeenCalledTimes(2);
+      });
+
+      await waitFor(() => {
+        expect(result.current.state.status).toBe('rendering');
+      });
+
+      // comp-a state preserved, comp-b cleaned up
+      expect(result.current.viewStateStore.getState('comp-a')).toEqual({ value: 'A-state' });
+      expect(result.current.viewStateStore.getState('comp-b')).toEqual({});
+    });
+  });
 });

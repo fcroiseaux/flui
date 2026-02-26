@@ -4,12 +4,12 @@ import {
   FLUI_E010,
   FLUI_E020,
   FluiError,
-  ok,
   type GenerationOrchestrator,
+  ok,
   type UISpecification,
   type ValidationPipeline,
 } from '@flui/core';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
@@ -27,19 +27,42 @@ vi.mock('@flui/core', async (importOriginal) => {
   };
 });
 
-const mockCreateOrchestrator = vi.mocked(
-  (await import('@flui/core')).createGenerationOrchestrator,
-);
-const mockCreatePipeline = vi.mocked(
-  (await import('@flui/core')).createValidationPipeline,
-);
+const mockCreateOrchestrator = vi.mocked((await import('@flui/core')).createGenerationOrchestrator);
+const mockCreatePipeline = vi.mocked((await import('@flui/core')).createValidationPipeline);
 
 function TestButton({ label }: { label: string }) {
-  return <button data-testid="rendered-button">{label}</button>;
+  return (
+    <button data-testid="rendered-button" type="button">
+      {label}
+    </button>
+  );
 }
 
 function TestText({ content }: { content: string }) {
   return <p data-testid="rendered-text">{content}</p>;
+}
+
+function TestDisplay({ filterCategory, data }: { filterCategory?: string; data?: unknown }) {
+  return (
+    <div data-testid="display" data-filter={filterCategory ?? ''} data-data={String(data ?? '')} />
+  );
+}
+
+function TestInput({
+  value,
+  onChange,
+}: {
+  value?: string;
+  onChange?: (e: { target: { value: string } }) => void;
+}) {
+  return (
+    <input
+      data-testid="input"
+      value={value ?? ''}
+      onChange={(e) => onChange?.(e as unknown as { target: { value: string } })}
+      readOnly
+    />
+  );
 }
 
 function createTestRegistry(): ComponentRegistry {
@@ -64,9 +87,7 @@ function createTestRegistry(): ComponentRegistry {
 function createTestSpec(): UISpecification {
   return {
     version: '1.0',
-    components: [
-      { id: 'btn1', componentType: 'TestButton', props: { label: 'Generated Button' } },
-    ],
+    components: [{ id: 'btn1', componentType: 'TestButton', props: { label: 'Generated Button' } }],
     layout: { type: 'stack' },
     interactions: [],
     metadata: { generatedAt: Date.now() },
@@ -77,11 +98,13 @@ function createMockConfig(): FluiReactConfig {
   return {
     generationConfig: {
       connector: {
-        generate: vi.fn().mockResolvedValue(ok({
-          content: '{}',
-          model: 'test-model',
-          usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
-        })),
+        generate: vi.fn().mockResolvedValue(
+          ok({
+            content: '{}',
+            model: 'test-model',
+            usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+          }),
+        ),
       },
       model: 'test-model',
     },
@@ -327,11 +350,7 @@ describe('LiquidView', () => {
 
       render(
         <FluiProvider registry={registry} config={createMockConfig()}>
-          <LiquidView
-            intent="show a button"
-            fallback={<div>Fallback</div>}
-            onError={onError}
-          />
+          <LiquidView intent="show a button" fallback={<div>Fallback</div>} onError={onError} />
         </FluiProvider>,
       );
 
@@ -359,10 +378,7 @@ describe('LiquidView', () => {
 
       render(
         <FluiProvider registry={registry} config={createMockConfig()}>
-          <LiquidView
-            intent="show content"
-            fallback={<div>Loading</div>}
-          />
+          <LiquidView intent="show content" fallback={<div>Loading</div>} />
         </FluiProvider>,
       );
 
@@ -405,10 +421,7 @@ describe('LiquidView', () => {
 
       const { container } = render(
         <FluiProvider registry={registry} config={createMockConfig()}>
-          <LiquidView
-            intent="show a button"
-            fallback={<div>Loading</div>}
-          />
+          <LiquidView intent="show a button" fallback={<div>Loading</div>} />
         </FluiProvider>,
       );
 
@@ -428,15 +441,163 @@ describe('LiquidView', () => {
       console.error = () => {};
 
       expect(() =>
-        render(
-          <LiquidView
-            intent="show a button"
-            fallback={<div>Fallback</div>}
-          />,
-        ),
+        render(<LiquidView intent="show a button" fallback={<div>Fallback</div>} />),
       ).toThrow('useFluiContext must be used within a FluiProvider');
 
       console.error = originalError;
+    });
+  });
+
+  describe('interaction wiring end-to-end', () => {
+    it('propagates source input changes to target component props', async () => {
+      const registry = new ComponentRegistry();
+      registry.register({
+        name: 'Display',
+        category: 'display',
+        description: 'Display component',
+        accepts: z.object({}),
+        component: TestDisplay,
+      });
+      registry.register({
+        name: 'Filter',
+        category: 'input',
+        description: 'Filter component',
+        accepts: z.object({}),
+        component: TestInput,
+      });
+
+      const specWithInteractions: UISpecification = {
+        version: '1.0',
+        components: [
+          { id: 'filter-1', componentType: 'Filter', props: {} },
+          { id: 'display-1', componentType: 'Display', props: {} },
+        ],
+        layout: { type: 'stack' },
+        interactions: [
+          {
+            source: 'filter-1',
+            target: 'display-1',
+            event: 'onChange',
+            dataMapping: { value: 'filterCategory' },
+          },
+        ],
+        metadata: { generatedAt: Date.now() },
+      };
+
+      mockGenerate.mockResolvedValue(ok(specWithInteractions));
+      mockValidate.mockResolvedValue(ok(specWithInteractions));
+
+      render(
+        <FluiProvider registry={registry} config={createMockConfig()}>
+          <LiquidView intent="show filter and display" fallback={<div>Loading</div>} />
+        </FluiProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('display')).toBeTruthy();
+      });
+
+      fireEvent.change(screen.getByTestId('input'), { target: { value: 'electronics' } });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('display').getAttribute('data-filter')).toBe('electronics');
+      });
+    });
+  });
+
+  describe('missing interaction component handling', () => {
+    it('does not crash when interaction references missing component', async () => {
+      const registry = createTestRegistry();
+
+      const specWithBadInteraction: UISpecification = {
+        version: '1.0',
+        components: [{ id: 'btn1', componentType: 'TestButton', props: { label: 'Good button' } }],
+        layout: { type: 'stack' },
+        interactions: [{ source: 'missing-src', target: 'btn1', event: 'onClick' }],
+        metadata: { generatedAt: Date.now() },
+      };
+
+      mockGenerate.mockResolvedValue(ok(specWithBadInteraction));
+      mockValidate.mockResolvedValue(ok(specWithBadInteraction));
+
+      render(
+        <FluiProvider registry={registry} config={createMockConfig()}>
+          <LiquidView intent="show a button" fallback={<div data-testid="fallback">Loading</div>} />
+        </FluiProvider>,
+      );
+
+      // Should render normally despite missing interaction component
+      await waitFor(() => {
+        expect(screen.getByTestId('rendered-button')).toBeTruthy();
+      });
+
+      expect(screen.getByText('Good button')).toBeTruthy();
+    });
+  });
+
+  describe('view state persistence', () => {
+    it('preserves user-entered state across regeneration for matching component ids', async () => {
+      const registry = new ComponentRegistry();
+      registry.register({
+        name: 'Filter',
+        category: 'input',
+        description: 'Filter input',
+        accepts: z.object({}),
+        component: TestInput,
+      });
+
+      const firstSpec: UISpecification = {
+        version: '1.0',
+        components: [{ id: 'filter-1', componentType: 'Filter', props: {} }],
+        layout: { type: 'stack' },
+        interactions: [],
+        metadata: { generatedAt: Date.now() },
+      };
+
+      const secondSpec: UISpecification = {
+        version: '1.0',
+        components: [{ id: 'filter-1', componentType: 'Filter', props: { value: '' } }],
+        layout: { type: 'stack' },
+        interactions: [],
+        metadata: { generatedAt: Date.now() + 1 },
+      };
+
+      let generationCount = 0;
+      mockGenerate.mockImplementation(async () => {
+        generationCount += 1;
+        return ok(generationCount === 1 ? firstSpec : secondSpec);
+      });
+      mockValidate.mockImplementation(async (spec: unknown) => ok(spec as UISpecification));
+
+      const { rerender } = render(
+        <FluiProvider registry={registry} config={createMockConfig()}>
+          <LiquidView intent="show filter" fallback={<div>Loading</div>} />
+        </FluiProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('input')).toBeTruthy();
+      });
+
+      fireEvent.change(screen.getByTestId('input'), { target: { value: 'saved-value' } });
+
+      await waitFor(() => {
+        expect((screen.getByTestId('input') as HTMLInputElement).value).toBe('saved-value');
+      });
+
+      rerender(
+        <FluiProvider registry={registry} config={createMockConfig()}>
+          <LiquidView intent="show filter updated" fallback={<div>Loading</div>} />
+        </FluiProvider>,
+      );
+
+      await waitFor(() => {
+        expect(generationCount).toBe(2);
+      });
+
+      await waitFor(() => {
+        expect((screen.getByTestId('input') as HTMLInputElement).value).toBe('saved-value');
+      });
     });
   });
 });

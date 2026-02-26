@@ -1,9 +1,13 @@
-import { ComponentRegistry, type UISpecification } from '@flui/core';
+import { ComponentRegistry, type InteractionSpec, type UISpecification } from '@flui/core';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
+import type { InteractionStore, RenderSpecOptions, ViewStateStore } from '../react.types';
+
+import { createInteractionStore } from './interaction-wiring';
 import { renderSpec } from './spec-renderer';
+import { createViewStateStore } from './view-state';
 
 function createTestSpec(overrides: Partial<UISpecification> = {}): UISpecification {
   return {
@@ -216,6 +220,168 @@ describe('renderSpec', () => {
 
       render(<>{renderSpec(spec, registry)}</>);
       expect(screen.getByText('ID key')).toBeTruthy();
+    });
+  });
+
+  describe('interaction store integration', () => {
+    it('renders target components with interaction-derived props', () => {
+      const registry = new ComponentRegistry();
+      registry.register({
+        name: 'Display',
+        category: 'display',
+        description: 'Display component',
+        accepts: z.object({}),
+        component: ({ filterCategory }: { filterCategory?: string }) => (
+          <div data-testid="display">{filterCategory ?? 'none'}</div>
+        ),
+      });
+
+      const spec = createTestSpec({
+        components: [
+          { id: 'display-1', componentType: 'Display', props: {} },
+        ],
+      });
+
+      const interactionStore = createInteractionStore(
+        [{ source: 'filter', target: 'display-1', event: 'onChange', dataMapping: { value: 'filterCategory' } }],
+        new Set(['filter', 'display-1']),
+      );
+
+      // Simulate source event
+      interactionStore.getSourceHandlers('filter').onChange!({ target: { value: 'tech' } });
+
+      const options: RenderSpecOptions = { interactionStore };
+      render(<>{renderSpec(spec, registry, options)}</>);
+
+      expect(screen.getByTestId('display').textContent).toBe('tech');
+    });
+  });
+
+  describe('view state store integration', () => {
+    it('renders components with persisted view state', () => {
+      const registry = new ComponentRegistry();
+      registry.register({
+        name: 'Input',
+        category: 'input',
+        description: 'Input component',
+        accepts: z.object({}),
+        component: ({ value }: { value?: string }) => (
+          <input data-testid="input" defaultValue={value ?? ''} />
+        ),
+      });
+
+      const spec = createTestSpec({
+        components: [
+          { id: 'input-1', componentType: 'Input', props: {} },
+        ],
+      });
+
+      const viewStateStore = createViewStateStore();
+      viewStateStore.setState('input-1', { value: 'persisted-text' });
+
+      const options: RenderSpecOptions = { viewStateStore };
+      render(<>{renderSpec(spec, registry, options)}</>);
+
+      expect(screen.getByTestId('input').getAttribute('value')).toBe('persisted-text');
+    });
+
+    it('view state overrides interaction target props (higher priority)', () => {
+      const registry = new ComponentRegistry();
+      registry.register({
+        name: 'Field',
+        category: 'input',
+        description: 'Field',
+        accepts: z.object({}),
+        component: ({ value }: { value?: string }) => (
+          <span data-testid="field">{value ?? 'empty'}</span>
+        ),
+      });
+
+      const spec = createTestSpec({
+        components: [
+          { id: 'field-1', componentType: 'Field', props: { value: 'base' } },
+        ],
+      });
+
+      const interactionStore = createInteractionStore(
+        [{ source: 'src', target: 'field-1', event: 'onChange', dataMapping: { value: 'value' } }],
+        new Set(['src', 'field-1']),
+      );
+      interactionStore.getSourceHandlers('src').onChange!({ target: { value: 'interaction' } });
+
+      const viewStateStore = createViewStateStore();
+      viewStateStore.setState('field-1', { value: 'user-typed' });
+
+      const options: RenderSpecOptions = { interactionStore, viewStateStore };
+      render(<>{renderSpec(spec, registry, options)}</>);
+
+      // View state wins over interaction props
+      expect(screen.getByTestId('field').textContent).toBe('user-typed');
+    });
+  });
+
+  describe('handler composition', () => {
+    it('composes original handler with interaction handler — both fire', () => {
+      const originalHandler = vi.fn();
+      const registry = new ComponentRegistry();
+      registry.register({
+        name: 'Btn',
+        category: 'input',
+        description: 'Button',
+        accepts: z.object({}),
+        component: ({ onClick }: { onClick?: (...args: unknown[]) => void }) => (
+          <button data-testid="btn" onClick={() => onClick?.('click-data')}>Click</button>
+        ),
+      });
+
+      const spec = createTestSpec({
+        components: [
+          { id: 'btn-1', componentType: 'Btn', props: { onClick: originalHandler } },
+        ],
+      });
+
+      const interactionStore = createInteractionStore(
+        [{ source: 'btn-1', target: 'target-1', event: 'onClick', dataMapping: { value: 'clickValue' } }],
+        new Set(['btn-1', 'target-1']),
+      );
+
+      const options: RenderSpecOptions = { interactionStore };
+      render(<>{renderSpec(spec, registry, options)}</>);
+
+      // Simulate click
+      screen.getByTestId('btn').click();
+
+      // Original handler was called
+      expect(originalHandler).toHaveBeenCalled();
+    });
+  });
+
+  describe('backward compatibility', () => {
+    it('renderSpec without options works identical to before', () => {
+      const registry = createRegistryWithComponents();
+      const spec = createTestSpec({
+        components: [
+          { id: 'btn1', componentType: 'TestButton', props: { label: 'No options' } },
+        ],
+      });
+
+      // Call without third argument — should work exactly as before
+      render(<>{renderSpec(spec, registry)}</>);
+
+      expect(screen.getByText('No options')).toBeTruthy();
+    });
+
+    it('renderSpec with undefined options works identical to before', () => {
+      const registry = createRegistryWithComponents();
+      const spec = createTestSpec({
+        components: [
+          { id: 'btn1', componentType: 'TestButton', props: { label: 'Undefined opts' } },
+        ],
+      });
+
+      render(<>{renderSpec(spec, registry, undefined)}</>);
+
+      expect(screen.getByText('Undefined opts')).toBeTruthy();
     });
   });
 });
