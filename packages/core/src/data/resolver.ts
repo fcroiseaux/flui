@@ -261,9 +261,10 @@ export function createDataResolverRegistry(config?: DataResolverConfig): DataRes
 
       // If any errors, return aggregated error
       if (errors.length > 0) {
+        const firstError = errors[0]!;
         const topLevelCode =
-          errors.length === 1 || errors.every((error) => error.code === errors[0].code)
-            ? errors[0].code
+          errors.length === 1 || errors.every((error) => error.code === firstError.code)
+            ? firstError.code
             : FLUI_E019;
 
         return err(
@@ -271,7 +272,7 @@ export function createDataResolverRegistry(config?: DataResolverConfig): DataRes
             topLevelCode,
             'generation',
             `Data resolution failed for ${errors.length} identifier(s): ${errors.map((e) => e.message).join('; ')}`,
-            { context: { failedCount: errors.length, resolvedCount }, cause: errors[0] },
+            { context: { failedCount: errors.length, resolvedCount }, cause: firstError },
           ),
         );
       }
