@@ -27,6 +27,8 @@ export {
   FLUI_E023,
   FLUI_E024,
   FLUI_E025,
+  FLUI_E026,
+  FLUI_E027,
 } from './error-codes';
 
 export type { FluiErrorOptions } from './flui-error';

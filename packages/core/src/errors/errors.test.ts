@@ -27,6 +27,10 @@ import {
   FLUI_E021,
   FLUI_E022,
   FLUI_E023,
+  FLUI_E024,
+  FLUI_E025,
+  FLUI_E026,
+  FLUI_E027,
   FluiError,
   isError,
   isOk,
@@ -142,6 +146,7 @@ describe('errors', () => {
         'connector',
         'config',
         'context',
+        'policy',
       ];
       for (const category of categories) {
         const error = new FluiError('FLUI_E001', category, `test ${category}`);
@@ -175,10 +180,14 @@ describe('errors', () => {
       FLUI_E021,
       FLUI_E022,
       FLUI_E023,
+      FLUI_E024,
+      FLUI_E025,
+      FLUI_E026,
+      FLUI_E027,
     ] as const;
 
-    it('exports all 23 error code constants', () => {
-      expect(allCodes).toHaveLength(23);
+    it('exports all 27 error code constants', () => {
+      expect(allCodes).toHaveLength(27);
     });
 
     it('all codes have correct FLUI_EXXX format', () => {
@@ -187,9 +196,9 @@ describe('errors', () => {
       }
     });
 
-    it('codes are sequential from FLUI_E001 to FLUI_E023', () => {
+    it('codes are sequential from FLUI_E001 to FLUI_E027', () => {
       const expected = Array.from(
-        { length: 23 },
+        { length: 27 },
         (_, i) => `FLUI_E${String(i + 1).padStart(3, '0')}`,
       );
       expect([...allCodes]).toStrictEqual(expected);
@@ -203,8 +212,8 @@ describe('errors', () => {
       }
     });
 
-    it('ERROR_CODE_DESCRIPTIONS has exactly 25 entries', () => {
-      expect(Object.keys(ERROR_CODE_DESCRIPTIONS)).toHaveLength(25);
+    it('ERROR_CODE_DESCRIPTIONS has exactly 27 entries', () => {
+      expect(Object.keys(ERROR_CODE_DESCRIPTIONS)).toHaveLength(27);
     });
 
     it('ErrorCategory type accepts all valid categories', () => {
@@ -215,8 +224,9 @@ describe('errors', () => {
         'connector',
         'config',
         'context',
+        'policy',
       ];
-      expect(categories).toHaveLength(6);
+      expect(categories).toHaveLength(7);
       for (const cat of categories) {
         expectTypeOf(cat).toMatchTypeOf<ErrorCategory>();
       }

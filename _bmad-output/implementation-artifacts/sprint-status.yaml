@@ -88,7 +88,7 @@ development_status:
   # Epic 7: Caching, Cost Control & Concurrency
   epic-7: in-progress
   7-1-three-level-cache-system: done
-  7-2-cost-manager-and-budget-enforcement: backlog
+  7-2-cost-manager-and-budget-enforcement: done
   7-3-concurrency-controller-and-circuit-breaker: backlog
   7-4-generation-policy-engine: backlog
   epic-7-retrospective: optional

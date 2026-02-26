@@ -70,6 +70,8 @@ export {
   FLUI_E023,
   FLUI_E024,
   FLUI_E025,
+  FLUI_E026,
+  FLUI_E027,
   FluiError,
   isError,
   isOk,
@@ -95,6 +97,17 @@ export {
   createStreamingOrchestrator,
   createStreamingSpecParser,
 } from './generation';
+// policy/ module
+export type {
+  BudgetCheckResult,
+  BudgetConfig,
+  BudgetStats,
+  CostEstimate,
+  CostManager,
+  CostRecord,
+  ModelPricing,
+} from './policy';
+export { createCostManager } from './policy';
 // intent/ module
 export type {
   Intent,
