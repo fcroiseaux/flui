@@ -72,8 +72,8 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: Validation & Safety Pipeline
-  epic-5: backlog
-  5-1-validation-pipeline-and-core-validators-schema-component-props: backlog
+  epic-5: in-progress
+  5-1-validation-pipeline-and-core-validators-schema-component-props: done
   5-2-accessibility-and-data-authorization-validators: backlog
   5-3-custom-validators-and-validation-retry: backlog
   epic-5-retrospective: optional

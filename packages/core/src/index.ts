@@ -53,6 +53,7 @@ export {
   FLUI_E017,
   FLUI_E018,
   FLUI_E019,
+  FLUI_E020,
   FluiError,
   isError,
   isOk,
@@ -135,3 +136,13 @@ export type {
   TraceStep,
 } from './types';
 export { createTrace, isStreamingConnector } from './types';
+// validation/ module
+export type {
+  ValidationError,
+  ValidationPipeline,
+  ValidationPipelineConfig,
+  ValidationResult,
+  ValidatorContext,
+  ValidatorFn,
+} from './validation';
+export { createValidationPipeline } from './validation';
