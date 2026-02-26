@@ -3,12 +3,14 @@ import { err, FLUI_E020, FluiError, ok } from '../errors';
 import type { UISpecification } from '../spec';
 
 import type {
+  AnyValidatorFn,
   ValidationError,
   ValidationPipelineConfig,
   ValidatorContext,
-  ValidatorFn,
 } from './validation.types';
+import { a11yValidator } from './validators/a11y';
 import { componentValidator } from './validators/component';
+import { dataAuthorizationValidator } from './validators/data-authorization';
 import { propValidator } from './validators/prop';
 import { schemaValidator } from './validators/schema';
 
@@ -17,29 +19,39 @@ import { schemaValidator } from './validators/schema';
  */
 export interface ValidationPipeline {
   /** Validates a UISpecification through all validators in order. */
-  validate(spec: UISpecification, context: ValidatorContext): Result<UISpecification, FluiError>;
+  validate(
+    spec: UISpecification,
+    context: ValidatorContext,
+  ): Promise<Result<UISpecification, FluiError>>;
 }
 
 /**
  * Creates a validation pipeline that runs validators in fixed order:
- * schema -> component -> props (+ any additional validators).
+ * schema -> component -> props -> a11y -> data authorization (+ any additional validators).
  *
  * The pipeline does NOT short-circuit: all validators run to provide a complete error report.
+ * Supports both sync and async validators via Promise.resolve() wrapping.
  */
 export function createValidationPipeline(config?: ValidationPipelineConfig): ValidationPipeline {
-  const validators: ValidatorFn[] = [schemaValidator, componentValidator, propValidator];
+  const validators: AnyValidatorFn[] = [
+    schemaValidator,
+    componentValidator,
+    propValidator,
+    a11yValidator,
+    dataAuthorizationValidator,
+  ];
 
   if (config?.additionalValidators) {
     validators.push(...config.additionalValidators);
   }
 
   return {
-    validate(spec, context) {
+    async validate(spec, context) {
       const allErrors: ValidationError[] = [];
       let currentSpec = spec;
 
       for (const validator of validators) {
-        const result = validator(currentSpec, context);
+        const result = await Promise.resolve(validator(currentSpec, context));
         if (!result.valid) {
           allErrors.push(...result.errors);
           continue;

@@ -31,6 +31,8 @@ export interface ValidatorContext {
   registry: ComponentRegistry;
   /** Extensible configuration for validator-specific settings */
   config?: Record<string, unknown> | undefined;
+  /** Authorized data identifiers for data authorization validation */
+  authorizedDataIdentifiers?: string[] | undefined;
 }
 
 /**
@@ -40,9 +42,23 @@ export interface ValidatorContext {
 export type ValidatorFn = (spec: UISpecification, context: ValidatorContext) => ValidationResult;
 
 /**
+ * Asynchronous validator function signature.
+ * Used by validators that may perform async operations (e.g., a11y, data authorization).
+ */
+export type AsyncValidatorFn = (
+  spec: UISpecification,
+  context: ValidatorContext,
+) => Promise<ValidationResult>;
+
+/**
+ * Union type accepting both sync and async validator functions.
+ */
+export type AnyValidatorFn = ValidatorFn | AsyncValidatorFn;
+
+/**
  * Configuration for creating a validation pipeline.
  */
 export interface ValidationPipelineConfig {
   /** Optional custom validators to append after core validators */
-  additionalValidators?: ValidatorFn[] | undefined;
+  additionalValidators?: AnyValidatorFn[] | undefined;
 }

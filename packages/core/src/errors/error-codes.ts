@@ -79,6 +79,12 @@ export const FLUI_E019 = 'FLUI_E019' as const;
 /** Validation pipeline failed: one or more validators rejected the specification */
 export const FLUI_E020 = 'FLUI_E020' as const;
 
+/** Accessibility validation failed: WCAG 2.1 AA compliance issues detected */
+export const FLUI_E021 = 'FLUI_E021' as const;
+
+/** Data authorization validation failed: unauthorized data identifiers referenced */
+export const FLUI_E022 = 'FLUI_E022' as const;
+
 export type DefinedFluiErrorCode =
   | typeof FLUI_E001
   | typeof FLUI_E002
@@ -99,7 +105,9 @@ export type DefinedFluiErrorCode =
   | typeof FLUI_E017
   | typeof FLUI_E018
   | typeof FLUI_E019
-  | typeof FLUI_E020;
+  | typeof FLUI_E020
+  | typeof FLUI_E021
+  | typeof FLUI_E022;
 
 /**
  * Human-readable descriptions for all defined error codes.
@@ -126,4 +134,6 @@ export const ERROR_CODE_DESCRIPTIONS: Record<DefinedFluiErrorCode, string> = {
   FLUI_E018: 'Unauthorized data identifier: data identifier not in authorized context',
   FLUI_E019: 'Unresolvable data identifier: no resolver registered for the given pattern',
   FLUI_E020: 'Validation pipeline failed: one or more validators rejected the specification',
+  FLUI_E021: 'Accessibility validation failed: WCAG 2.1 AA compliance issues detected',
+  FLUI_E022: 'Data authorization validation failed: unauthorized data identifiers referenced',
 };
