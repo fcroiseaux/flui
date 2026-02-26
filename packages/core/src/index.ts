@@ -19,6 +19,15 @@ export {
   identityContextSchema,
   viewportSizeSchema,
 } from './context';
+// data/ module
+export type {
+  DataIdentifier,
+  DataResolutionResult,
+  DataResolverConfig,
+  DataResolverFn,
+  DataResolverRegistry,
+} from './data';
+export { createDataResolverRegistry } from './data';
 // errors/ module
 export type { ErrorCategory, FluiErrorCode, FluiErrorOptions } from './errors';
 export {
@@ -42,6 +51,8 @@ export {
   FLUI_E015,
   FLUI_E016,
   FLUI_E017,
+  FLUI_E018,
+  FLUI_E019,
   FluiError,
   isError,
   isOk,

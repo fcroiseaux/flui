@@ -70,6 +70,12 @@ export const FLUI_E016 = 'FLUI_E016' as const;
 /** Stream terminated unexpectedly: stream ended before producing a complete response */
 export const FLUI_E017 = 'FLUI_E017' as const;
 
+/** Unauthorized data identifier: data identifier not in authorized context */
+export const FLUI_E018 = 'FLUI_E018' as const;
+
+/** Unresolvable data identifier: no resolver registered for the given pattern */
+export const FLUI_E019 = 'FLUI_E019' as const;
+
 export type DefinedFluiErrorCode =
   | typeof FLUI_E001
   | typeof FLUI_E002
@@ -87,7 +93,9 @@ export type DefinedFluiErrorCode =
   | typeof FLUI_E014
   | typeof FLUI_E015
   | typeof FLUI_E016
-  | typeof FLUI_E017;
+  | typeof FLUI_E017
+  | typeof FLUI_E018
+  | typeof FLUI_E019;
 
 /**
  * Human-readable descriptions for all defined error codes.
@@ -111,4 +119,6 @@ export const ERROR_CODE_DESCRIPTIONS: Record<DefinedFluiErrorCode, string> = {
   FLUI_E016:
     'UISpecification validation failed: LLM response does not conform to UISpecification schema',
   FLUI_E017: 'Stream terminated unexpectedly: stream ended before producing a complete response',
+  FLUI_E018: 'Unauthorized data identifier: data identifier not in authorized context',
+  FLUI_E019: 'Unresolvable data identifier: no resolver registered for the given pattern',
 };
