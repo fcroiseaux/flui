@@ -33,3 +33,6 @@ export {
   useInteractionStore,
   useViewState,
 } from './renderer';
+// Debug
+export type { DebugOverlayProps, DebugTabId, TraceFilter } from './debug';
+export { DebugOverlay, SpecTab, TraceTab, useFluidDebug } from './debug';
