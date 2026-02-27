@@ -118,6 +118,9 @@ export const FLUI_E031 = 'FLUI_E031' as const;
 /** Invalid redaction config: malformed field path in redaction configuration */
 export const FLUI_E032 = 'FLUI_E032' as const;
 
+/** Invalid factory configuration: createFlui config is missing or malformed */
+export const FLUI_E033 = 'FLUI_E033' as const;
+
 export type DefinedFluiErrorCode =
   | typeof FLUI_E001
   | typeof FLUI_E002
@@ -150,7 +153,8 @@ export type DefinedFluiErrorCode =
   | typeof FLUI_E029
   | typeof FLUI_E030
   | typeof FLUI_E031
-  | typeof FLUI_E032;
+  | typeof FLUI_E032
+  | typeof FLUI_E033;
 
 /**
  * Human-readable descriptions for all defined error codes.
@@ -189,4 +193,5 @@ export const ERROR_CODE_DESCRIPTIONS: Record<DefinedFluiErrorCode, string> = {
   FLUI_E030: 'Invalid concurrency configuration: invalid threshold, timeout, or scope',
   FLUI_E031: 'Transport send failed: one or more trace transports failed to deliver',
   FLUI_E032: 'Invalid redaction config: malformed field path in redaction configuration',
+  FLUI_E033: 'Invalid factory configuration: createFlui config is missing or malformed',
 };

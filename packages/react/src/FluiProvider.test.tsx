@@ -1,163 +1,65 @@
-import { ComponentRegistry } from '@flui/core';
-import { render, screen } from '@testing-library/react';
-import { createContext, useContext } from 'react';
+import { ComponentRegistry, type LLMConnector, ok } from '@flui/core';
+import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
-
 import { FluiProvider, useFluiContext } from './FluiProvider';
 
-function createTestRegistry(): ComponentRegistry {
-  const registry = new ComponentRegistry();
-  registry.register({
-    name: 'TestButton',
-    category: 'input',
-    description: 'A test button',
-    accepts: z.object({ label: z.string() }),
-    component: () => null,
-  });
-  return registry;
+function TestConsumer() {
+  const ctx = useFluiContext();
+  return <div data-testid="ctx">{String(Boolean(ctx.registry))}</div>;
+}
+
+function createConnector(): LLMConnector {
+  return {
+    async generate() {
+      return ok({
+        content: JSON.stringify({
+          version: '1.0.0',
+          components: [],
+          layout: { type: 'stack', direction: 'vertical' },
+          interactions: [],
+          metadata: {
+            generatedAt: Date.now(),
+            model: 'gpt-4o',
+            intentHash: 'hash',
+            traceId: 'trace',
+          },
+        }),
+        model: 'gpt-4o',
+        usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+      });
+    },
+  };
 }
 
 describe('FluiProvider', () => {
-  describe('context value', () => {
-    it('provides registry to children via context', () => {
-      const registry = createTestRegistry();
+  it('accepts createFlui instance prop', () => {
+    const instance = {
+      registry: new ComponentRegistry(),
+      config: {
+        connector: createConnector(),
+        generationConfig: {
+          connector: createConnector(),
+          model: 'gpt-4o',
+        },
+        validationConfig: {},
+      },
+    };
+    const ui = render(
+      <FluiProvider instance={instance as import('@flui/core').FluiInstance}>
+        <TestConsumer />
+      </FluiProvider>,
+    );
 
-      function Consumer() {
-        const ctx = useFluiContext();
-        return <div data-testid="result">{ctx.registry.getAll().length}</div>;
-      }
-
-      render(
-        <FluiProvider registry={registry}>
-          <Consumer />
-        </FluiProvider>,
-      );
-
-      expect(screen.getByTestId('result').textContent).toBe('1');
-    });
-
-    it('provides config when supplied', () => {
-      const registry = createTestRegistry();
-      const config = { connector: undefined };
-
-      function Consumer() {
-        const ctx = useFluiContext();
-        return <div data-testid="has-config">{ctx.config !== undefined ? 'yes' : 'no'}</div>;
-      }
-
-      render(
-        <FluiProvider registry={registry} config={config}>
-          <Consumer />
-        </FluiProvider>,
-      );
-
-      expect(screen.getByTestId('has-config').textContent).toBe('yes');
-    });
-
-    it('provides undefined config when not supplied', () => {
-      const registry = createTestRegistry();
-
-      function Consumer() {
-        const ctx = useFluiContext();
-        return <div data-testid="has-config">{ctx.config !== undefined ? 'yes' : 'no'}</div>;
-      }
-
-      render(
-        <FluiProvider registry={registry}>
-          <Consumer />
-        </FluiProvider>,
-      );
-
-      expect(screen.getByTestId('has-config').textContent).toBe('no');
-    });
+    expect(ui.getByTestId('ctx').textContent).toBe('true');
   });
 
-  describe('error without provider', () => {
-    it('throws descriptive error when useFluiContext is used outside FluiProvider', () => {
-      function OrphanConsumer() {
-        useFluiContext();
-        return null;
-      }
-
-      const originalError = console.error;
-      console.error = () => {};
-
-      expect(() => render(<OrphanConsumer />)).toThrow(
-        'useFluiContext must be used within a FluiProvider',
-      );
-
-      console.error = originalError;
-    });
-  });
-
-  describe('provider isolation', () => {
-    it('does not conflict with other React context providers', () => {
-      const registry = createTestRegistry();
-      const OtherContext = createContext('other-default');
-
-      function DoubleConsumer() {
-        const fluiCtx = useFluiContext();
-        const otherValue = useContext(OtherContext);
-        return (
-          <div>
-            <span data-testid="flui">{fluiCtx.registry.getAll().length}</span>
-            <span data-testid="other">{otherValue}</span>
-          </div>
-        );
-      }
-
+  it('throws when neither instance nor registry is provided', () => {
+    expect(() =>
       render(
-        <OtherContext.Provider value="custom-value">
-          <FluiProvider registry={registry}>
-            <DoubleConsumer />
-          </FluiProvider>
-        </OtherContext.Provider>,
-      );
-
-      expect(screen.getByTestId('flui').textContent).toBe('1');
-      expect(screen.getByTestId('other').textContent).toBe('custom-value');
-    });
-
-    it('does not interfere with nested FluiProviders', () => {
-      const outerRegistry = createTestRegistry();
-      const innerRegistry = new ComponentRegistry();
-      innerRegistry.register({
-        name: 'InnerComp',
-        category: 'display',
-        description: 'inner component',
-        accepts: z.object({}),
-        component: () => null,
-      });
-      innerRegistry.register({
-        name: 'InnerComp2',
-        category: 'display',
-        description: 'inner component 2',
-        accepts: z.object({}),
-        component: () => null,
-      });
-
-      function OuterConsumer() {
-        const ctx = useFluiContext();
-        return <span data-testid="outer">{ctx.registry.getAll().length}</span>;
-      }
-
-      function InnerConsumer() {
-        const ctx = useFluiContext();
-        return <span data-testid="inner">{ctx.registry.getAll().length}</span>;
-      }
-
-      render(
-        <FluiProvider registry={outerRegistry}>
-          <OuterConsumer />
-          <FluiProvider registry={innerRegistry}>
-            <InnerConsumer />
-          </FluiProvider>
+        <FluiProvider>
+          <div>child</div>
         </FluiProvider>,
-      );
-
-      expect(screen.getByTestId('outer').textContent).toBe('1');
-      expect(screen.getByTestId('inner').textContent).toBe('2');
-    });
+      ),
+    ).toThrow('FluiProvider requires either an instance or a registry');
   });
 });

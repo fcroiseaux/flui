@@ -1,6 +1,7 @@
 import type {
   ComponentRegistry,
   FluiError,
+  FluiInstance,
   GenerationConfig,
   GenerationTrace,
   LLMConnector,
@@ -91,8 +92,10 @@ export interface FluiReactConfig {
  * Props for the FluiProvider component.
  */
 export interface FluiProviderProps {
+  /** FluiInstance from createFlui() — provides registry and config automatically. */
+  instance?: FluiInstance | undefined;
   /** Component registry for component lookups. */
-  registry: ComponentRegistry;
+  registry?: ComponentRegistry | undefined;
   /** Child components wrapped by the provider. */
   children: ReactNode;
   /** Optional configuration for generation and validation. */

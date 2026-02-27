@@ -1,5 +1,16 @@
 // @flui/core - Core generation engine
 
+// cache/ module
+export type {
+  CacheConfig,
+  CacheEntry,
+  CacheKey,
+  CacheManager,
+  CacheResult,
+  CacheStats,
+  CacheStorage,
+} from './cache';
+export { buildCacheKey, createCacheManager } from './cache';
 // concurrency/ module
 export type {
   CancellationResult,
@@ -12,17 +23,6 @@ export type {
   ConcurrencyController,
 } from './concurrency';
 export { createCircuitBreaker, createConcurrencyController } from './concurrency';
-// cache/ module
-export type {
-  CacheConfig,
-  CacheEntry,
-  CacheKey,
-  CacheManager,
-  CacheResult,
-  CacheStats,
-  CacheStorage,
-} from './cache';
-export { buildCacheKey, createCacheManager } from './cache';
 // context/ module
 export type {
   AggregatedContext,
@@ -89,12 +89,30 @@ export {
   FLUI_E030,
   FLUI_E031,
   FLUI_E032,
+  FLUI_E033,
   FluiError,
   isError,
   isOk,
   ok,
 } from './errors';
 export type { Result } from './errors/result';
+export {
+  createFlui,
+  DEFAULT_BUDGET_CONFIG,
+  DEFAULT_CACHE_CONFIG,
+  DEFAULT_CONCURRENCY_CONFIG,
+  DEFAULT_GENERATION_CONFIG,
+  DEFAULT_OBSERVABILITY_CONFIG,
+  DEFAULT_POLICY_CONFIG,
+} from './flui';
+// flui factory
+export type {
+  FluiConfig,
+  FluiGenerateInput,
+  FluiInstance,
+  FluiInstanceConfig,
+  FluiModules,
+} from './flui.types';
 // generation/ module
 export type {
   GenerationConfig,
@@ -114,22 +132,6 @@ export {
   createStreamingOrchestrator,
   createStreamingSpecParser,
 } from './generation';
-// policy/ module
-export type {
-  BudgetCheckResult,
-  BudgetConfig,
-  BudgetStats,
-  CostEstimate,
-  CostManager,
-  CostRecord,
-  GenerationPolicyConfig,
-  GenerationPolicyEngine,
-  ModelPricing,
-  PolicyAction,
-  PolicyDecision,
-  PolicyInput,
-} from './policy';
-export { createCostManager, createGenerationPolicyEngine } from './policy';
 // intent/ module
 export type {
   Intent,
@@ -146,6 +148,42 @@ export {
   structuredIntentSchema,
   textIntentSchema,
 } from './intent';
+// observe/ module
+export type {
+  CacheLevelMetrics,
+  CacheMetrics,
+  CostMetrics,
+  MetricsReporter,
+  MetricsSnapshot,
+  ObservabilityCollector,
+  ObservabilityCollectorConfig,
+  RedactionConfig,
+  TraceTransport,
+} from './observe';
+export {
+  createBufferTransport,
+  createConsoleTransport,
+  createMetricsReporter,
+  createMetricsTransport,
+  createObservabilityCollector,
+  redactTrace,
+} from './observe';
+// policy/ module
+export type {
+  BudgetCheckResult,
+  BudgetConfig,
+  BudgetStats,
+  CostEstimate,
+  CostManager,
+  CostRecord,
+  GenerationPolicyConfig,
+  GenerationPolicyEngine,
+  ModelPricing,
+  PolicyAction,
+  PolicyDecision,
+  PolicyInput,
+} from './policy';
+export { createCostManager, createGenerationPolicyEngine } from './policy';
 // registry/ module
 export type {
   ComponentDefinition,
@@ -173,27 +211,6 @@ export {
   uiSpecificationMetadataSchema,
   uiSpecificationSchema,
 } from './spec';
-
-// observe/ module
-export type {
-  CacheLevelMetrics,
-  CacheMetrics,
-  CostMetrics,
-  MetricsReporter,
-  MetricsSnapshot,
-  ObservabilityCollector,
-  ObservabilityCollectorConfig,
-  RedactionConfig,
-  TraceTransport,
-} from './observe';
-export {
-  createBufferTransport,
-  createConsoleTransport,
-  createMetricsReporter,
-  createMetricsTransport,
-  createObservabilityCollector,
-  redactTrace,
-} from './observe';
 // types (shared cross-cutting types)
 export type {
   GenerationChunk,

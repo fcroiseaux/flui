@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, type ReactNode, useContext, useMemo } from 'react';
 
 import type { FluiContextValue, FluiProviderProps } from './react.types';
 
@@ -15,8 +15,22 @@ const FluiContext = createContext<FluiContextValue | null>(null);
  * FluiProvider is a lightweight context wrapper — no side effects,
  * no state management library dependency.
  */
-export function FluiProvider({ registry, config, children }: FluiProviderProps): ReactNode {
-  const value = useMemo(() => ({ registry, config }), [registry, config]);
+export function FluiProvider({
+  instance,
+  registry,
+  config,
+  children,
+}: FluiProviderProps): ReactNode {
+  const resolvedRegistry = instance?.registry ?? registry;
+  if (!resolvedRegistry) {
+    throw new Error('FluiProvider requires either an instance or a registry');
+  }
+
+  const resolvedConfig = instance?.config ?? config;
+  const value = useMemo(
+    () => ({ registry: resolvedRegistry, config: resolvedConfig }),
+    [resolvedRegistry, resolvedConfig],
+  );
   return <FluiContext.Provider value={value}>{children}</FluiContext.Provider>;
 }
 

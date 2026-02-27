@@ -80,6 +80,14 @@ describe('@flui/core', () => {
     expect(exportedKeys).toContain('createTrace');
   });
 
+  it('exports flui factory public API', async () => {
+    const api = await import('./index');
+    const exportedKeys = Object.keys(api);
+
+    expect(exportedKeys).toContain('createFlui');
+    expect(exportedKeys).toContain('DEFAULT_CACHE_CONFIG');
+  });
+
   it('supports shared type imports from @flui/core barrel', () => {
     expectTypeOf<LLMConnector>().toBeObject();
     expectTypeOf<LLMResponse>().toBeObject();
