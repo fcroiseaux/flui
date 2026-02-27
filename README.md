@@ -30,6 +30,7 @@ Flui does not replace React, Vue, or Angular — it **augments** them. A develop
 | `@flui/openai` | OpenAI GPT connector |
 | `@flui/anthropic` | Anthropic Claude connector |
 | `@flui/testing` | MockConnector, spec builders, render helpers for tests |
+| [`examples/showcase`](./examples/showcase/) | Interactive demo app — 4 scenarios, 9 components, zero-config |
 
 ## Quick Start
 
@@ -183,6 +184,34 @@ const { states } = renderLiquidView({ connector: mock, intent: 'Show a button' }
 const spec = await waitForGeneration(states);
 expect(spec.components[0].componentType).toBe('Text');
 ```
+
+## Examples
+
+### Showcase App
+
+A runnable demo application that demonstrates flui's key features in a single interactive experience. Located at [`examples/showcase/`](./examples/showcase/).
+
+**Works out of the box with zero API key** — uses `MockConnector` from `@flui/testing` by default. Optionally set `VITE_OPENAI_API_KEY` for live LLM mode.
+
+```bash
+# Start the showcase app
+pnpm --filter @flui/showcase dev
+```
+
+Open `http://localhost:5173` and explore four scenarios:
+
+| Scenario | Demonstrates |
+|----------|-------------|
+| **Hello Liquid World** | Basic generation from a single intent — `createFlui`, `<LiquidView>`, crossfade transition |
+| **Context-Aware Dashboard** | Context engine with identity and environment providers driving MetricCard layout |
+| **Interactive Form** | `InteractionSpec` data wiring between Input, Select, and DataTable |
+| **Role-Adaptive UI** | Switching user roles (admin / editor / viewer) re-triggers generation with different specs |
+
+The app includes:
+
+- **9 registered components** — Heading, Text, Button, Card, Input, Select, DataTable, MetricCard, StatusBadge
+- **Live metrics bar** — cost and cache stats from `flui.getMetrics()`
+- **Debug overlay** — toggle with `Ctrl+Shift+D` to inspect the generated spec and trace
 
 ## Development
 
