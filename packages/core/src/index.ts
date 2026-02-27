@@ -1,5 +1,17 @@
 // @flui/core - Core generation engine
 
+// concurrency/ module
+export type {
+  CancellationResult,
+  CircuitBreaker,
+  CircuitBreakerConfig,
+  CircuitBreakerScope,
+  CircuitBreakerState,
+  CircuitBreakerStatus,
+  ConcurrencyConfig,
+  ConcurrencyController,
+} from './concurrency';
+export { createCircuitBreaker, createConcurrencyController } from './concurrency';
 // cache/ module
 export type {
   CacheConfig,
@@ -72,6 +84,9 @@ export {
   FLUI_E025,
   FLUI_E026,
   FLUI_E027,
+  FLUI_E028,
+  FLUI_E029,
+  FLUI_E030,
   FluiError,
   isError,
   isOk,
@@ -105,9 +120,14 @@ export type {
   CostEstimate,
   CostManager,
   CostRecord,
+  GenerationPolicyConfig,
+  GenerationPolicyEngine,
   ModelPricing,
+  PolicyAction,
+  PolicyDecision,
+  PolicyInput,
 } from './policy';
-export { createCostManager } from './policy';
+export { createCostManager, createGenerationPolicyEngine } from './policy';
 // intent/ module
 export type {
   Intent,

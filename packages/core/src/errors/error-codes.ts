@@ -8,7 +8,8 @@ export type ErrorCategory =
   | 'connector'
   | 'config'
   | 'context'
-  | 'policy';
+  | 'policy'
+  | 'concurrency';
 
 type Digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
 type NonZeroDigit = Exclude<Digit, '0'>;
@@ -101,6 +102,15 @@ export const FLUI_E026 = 'FLUI_E026' as const;
 /** Invalid budget configuration: negative budget or conflicting constraints */
 export const FLUI_E027 = 'FLUI_E027' as const;
 
+/** Request cancelled: generation superseded by newer request or explicitly cancelled */
+export const FLUI_E028 = 'FLUI_E028' as const;
+
+/** Circuit breaker open: LLM calls blocked due to consecutive failures */
+export const FLUI_E029 = 'FLUI_E029' as const;
+
+/** Invalid concurrency configuration: invalid threshold, timeout, or scope */
+export const FLUI_E030 = 'FLUI_E030' as const;
+
 export type DefinedFluiErrorCode =
   | typeof FLUI_E001
   | typeof FLUI_E002
@@ -128,7 +138,10 @@ export type DefinedFluiErrorCode =
   | typeof FLUI_E024
   | typeof FLUI_E025
   | typeof FLUI_E026
-  | typeof FLUI_E027;
+  | typeof FLUI_E027
+  | typeof FLUI_E028
+  | typeof FLUI_E029
+  | typeof FLUI_E030;
 
 /**
  * Human-readable descriptions for all defined error codes.
@@ -162,4 +175,7 @@ export const ERROR_CODE_DESCRIPTIONS: Record<DefinedFluiErrorCode, string> = {
   FLUI_E025: 'Cache storage unavailable: L2/L3 storage backend not accessible',
   FLUI_E026: 'Budget exhausted: generation would exceed configured cost budget',
   FLUI_E027: 'Invalid budget configuration: negative budget or conflicting constraints',
+  FLUI_E028: 'Request cancelled: generation superseded by newer request or explicitly cancelled',
+  FLUI_E029: 'Circuit breaker open: LLM calls blocked due to consecutive failures',
+  FLUI_E030: 'Invalid concurrency configuration: invalid threshold, timeout, or scope',
 };
