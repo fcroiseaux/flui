@@ -176,6 +176,11 @@ export {
 
 // observe/ module
 export type {
+  CacheLevelMetrics,
+  CacheMetrics,
+  CostMetrics,
+  MetricsReporter,
+  MetricsSnapshot,
   ObservabilityCollector,
   ObservabilityCollectorConfig,
   RedactionConfig,
@@ -184,6 +189,8 @@ export type {
 export {
   createBufferTransport,
   createConsoleTransport,
+  createMetricsReporter,
+  createMetricsTransport,
   createObservabilityCollector,
   redactTrace,
 } from './observe';
