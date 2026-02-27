@@ -29,12 +29,25 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "@flui/core": "workspace:*"
+    "@flui/core": "workspace:*",
+    "@flui/react": "workspace:*",
+    "@testing-library/react": ">=16.0.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "devDependencies": {
     "@flui/core": "workspace:*",
+    "@flui/react": "workspace:*",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "16.3.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "jsdom": "^26.1.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
     "tsup": "8.5.1",
     "typescript": "5.8.3",
-    "vitest": "4.0.18"
+    "vitest": "4.0.18",
+    "zod": "4.3.6"
   }
 }
