@@ -94,8 +94,8 @@ development_status:
   epic-7-retrospective: optional
 
   # Epic 8: Observability & Developer Tooling
-  epic-8: backlog
-  8-1-observability-collector-and-trace-transports: backlog
+  epic-8: in-progress
+  8-1-observability-collector-and-trace-transports: done
   8-2-cost-and-cache-metrics-reporting: backlog
   8-3-debug-overlay-spec-and-trace-tabs: backlog
   8-4-testing-package-mockconnector-and-assertion-helpers: backlog

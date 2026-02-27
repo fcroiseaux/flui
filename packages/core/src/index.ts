@@ -87,6 +87,8 @@ export {
   FLUI_E028,
   FLUI_E029,
   FLUI_E030,
+  FLUI_E031,
+  FLUI_E032,
   FluiError,
   isError,
   isOk,
@@ -172,6 +174,19 @@ export {
   uiSpecificationSchema,
 } from './spec';
 
+// observe/ module
+export type {
+  ObservabilityCollector,
+  ObservabilityCollectorConfig,
+  RedactionConfig,
+  TraceTransport,
+} from './observe';
+export {
+  createBufferTransport,
+  createConsoleTransport,
+  createObservabilityCollector,
+  redactTrace,
+} from './observe';
 // types (shared cross-cutting types)
 export type {
   GenerationChunk,

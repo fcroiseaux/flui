@@ -9,7 +9,8 @@ export type ErrorCategory =
   | 'config'
   | 'context'
   | 'policy'
-  | 'concurrency';
+  | 'concurrency'
+  | 'observe';
 
 type Digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
 type NonZeroDigit = Exclude<Digit, '0'>;
@@ -111,6 +112,12 @@ export const FLUI_E029 = 'FLUI_E029' as const;
 /** Invalid concurrency configuration: invalid threshold, timeout, or scope */
 export const FLUI_E030 = 'FLUI_E030' as const;
 
+/** Transport send failed: one or more trace transports failed to deliver */
+export const FLUI_E031 = 'FLUI_E031' as const;
+
+/** Invalid redaction config: malformed field path in redaction configuration */
+export const FLUI_E032 = 'FLUI_E032' as const;
+
 export type DefinedFluiErrorCode =
   | typeof FLUI_E001
   | typeof FLUI_E002
@@ -141,7 +148,9 @@ export type DefinedFluiErrorCode =
   | typeof FLUI_E027
   | typeof FLUI_E028
   | typeof FLUI_E029
-  | typeof FLUI_E030;
+  | typeof FLUI_E030
+  | typeof FLUI_E031
+  | typeof FLUI_E032;
 
 /**
  * Human-readable descriptions for all defined error codes.
@@ -178,4 +187,6 @@ export const ERROR_CODE_DESCRIPTIONS: Record<DefinedFluiErrorCode, string> = {
   FLUI_E028: 'Request cancelled: generation superseded by newer request or explicitly cancelled',
   FLUI_E029: 'Circuit breaker open: LLM calls blocked due to consecutive failures',
   FLUI_E030: 'Invalid concurrency configuration: invalid threshold, timeout, or scope',
+  FLUI_E031: 'Transport send failed: one or more trace transports failed to deliver',
+  FLUI_E032: 'Invalid redaction config: malformed field path in redaction configuration',
 };
