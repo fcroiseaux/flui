@@ -28,8 +28,8 @@ export function FluiProvider({
 
   const resolvedConfig = instance?.config ?? config;
   const value = useMemo(
-    () => ({ registry: resolvedRegistry, config: resolvedConfig }),
-    [resolvedRegistry, resolvedConfig],
+    () => ({ registry: resolvedRegistry, config: resolvedConfig, instance }),
+    [resolvedRegistry, resolvedConfig, instance],
   );
   return <FluiContext.Provider value={value}>{children}</FluiContext.Provider>;
 }

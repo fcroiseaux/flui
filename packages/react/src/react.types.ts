@@ -92,7 +92,12 @@ export interface FluiReactConfig {
  * Props for the FluiProvider component.
  */
 export interface FluiProviderProps {
-  /** FluiInstance from createFlui() — provides registry and config automatically. */
+  /**
+   * FluiInstance from createFlui() — provides registry, config, and cache automatically.
+   * Must be a stable reference (create once with useState/useMemo or at module scope).
+   * An inline `createFlui()` call in JSX will create a new instance on every render,
+   * defeating the cache.
+   */
   instance?: FluiInstance | undefined;
   /** Component registry for component lookups. */
   registry?: ComponentRegistry | undefined;
@@ -110,6 +115,8 @@ export interface FluiContextValue {
   registry: ComponentRegistry;
   /** Optional configuration for generation and validation. */
   config?: FluiReactConfig | undefined;
+  /** Optional FluiInstance — when present, hooks use its cache-aware generate() path. */
+  instance?: FluiInstance | undefined;
 }
 
 /**

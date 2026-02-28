@@ -1,4 +1,5 @@
 import {
+  buildCacheKey,
   type ComponentSpec,
   createGenerationOrchestrator,
   createPromptBuilder,
@@ -11,6 +12,7 @@ import {
   type IntentObject,
   isError,
   parseIntent,
+  SPEC_VERSION,
 } from '@flui/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -80,6 +82,8 @@ export function useLiquidView(
   latestDataRef.current = options.data;
   const latestConfigRef = useRef(ctx.config);
   latestConfigRef.current = ctx.config;
+  const latestInstanceRef = useRef(ctx.instance);
+  latestInstanceRef.current = ctx.instance;
 
   const updateState = useCallback((newState: LiquidViewState) => {
     setState(newState);
@@ -111,6 +115,12 @@ export function useLiquidView(
     const runGeneration = async () => {
       const signal = controller.signal;
 
+      if (signal.aborted) return;
+
+      // Create trace and transition to generating
+      const trace = createTrace();
+      updateState({ status: 'generating', trace });
+
       // Parse intent
       const intentInput = normalizeIntent(options.intent!);
       const parseResult = parseIntent(intentInput);
@@ -121,11 +131,38 @@ export function useLiquidView(
       }
       const intentObject = parseResult.value;
 
-      // Create trace and transition to generating
-      const trace = createTrace();
-      updateState({ status: 'generating', trace });
+      // ── Cache check: serve from instance cache if available ──
+      const instance = latestInstanceRef.current;
+      if (instance) {
+        const requestContext = {
+          ...(latestContextRef.current ?? {}),
+          ...(latestDataRef.current ?? {}),
+        };
+        const cacheKey = await buildCacheKey(
+          intentObject.sanitizedText,
+          { request: requestContext },
+          String(ctx.registry.version),
+          SPEC_VERSION,
+        );
+        const cacheResult = await instance.modules.cache.get(cacheKey);
+        if (cacheResult.hit && cacheResult.value) {
+          if (signal.aborted) return;
 
-      // Check if we have a complete generation config
+          trace.addStep({
+            module: 'cache',
+            operation: 'hit',
+            durationMs: 0,
+            metadata: { level: cacheResult.level, key: cacheKey.slice(0, 12) },
+          });
+
+          const newComponentIds = collectComponentIds(cacheResult.value.components);
+          viewStateStore.reconcile(newComponentIds);
+          updateState({ status: 'rendering', spec: cacheResult.value, trace });
+          return;
+        }
+      }
+
+      // ── Generation path: orchestrator + validateWithRetry ──
       const generationConfig = latestConfigRef.current?.generationConfig;
       const connector = latestConfigRef.current?.connector ?? generationConfig?.connector;
       const model = generationConfig?.model;
@@ -150,7 +187,6 @@ export function useLiquidView(
         model,
       };
 
-      // Generate
       const orchestrator = createGenerationOrchestrator(resolvedGenerationConfig);
       const promptBuilder = createPromptBuilder();
       const generationInput: GenerationInput = {
@@ -219,6 +255,21 @@ export function useLiquidView(
       if (isError(validResult)) {
         updateState({ status: 'error', error: validResult.error, fallback: true });
         return;
+      }
+
+      // Store validated spec in instance cache for future hits
+      if (instance) {
+        const requestContext = {
+          ...(latestContextRef.current ?? {}),
+          ...(latestDataRef.current ?? {}),
+        };
+        const cacheKey = await buildCacheKey(
+          intentObject.sanitizedText,
+          { request: requestContext },
+          String(ctx.registry.version),
+          SPEC_VERSION,
+        );
+        await instance.modules.cache.set(cacheKey, validResult.value);
       }
 
       // Reconcile view state: prune orphaned component state, preserve matching IDs
