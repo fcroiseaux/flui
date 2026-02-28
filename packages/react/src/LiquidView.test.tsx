@@ -128,7 +128,7 @@ describe('LiquidView', () => {
       validate: mockValidate,
       addValidator: vi.fn().mockReturnValue(ok(undefined)),
       removeValidator: vi.fn().mockReturnValue(false),
-      validateWithRetry: vi.fn(),
+      validateWithRetry: mockValidate,
     } as unknown as ValidationPipeline);
   });
 

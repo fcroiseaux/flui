@@ -4,7 +4,9 @@ import type {
   FluiInstance,
   GenerationConfig,
   GenerationTrace,
+  IntentObject,
   LLMConnector,
+  PrefetchStatus,
   UISpecification,
   ValidationPipelineConfig,
 } from '@flui/core';
@@ -196,4 +198,30 @@ export interface RenderSpecOptions {
   focusTracking?: boolean | undefined;
   /** Callback for interaction wiring issues. */
   onInteractionIssue?: ((issue: InteractionIssue) => void) | undefined;
+}
+
+/**
+ * Options for the usePrefetch hook.
+ */
+export interface UsePrefetchOptions {
+  /** Intent string or structured intent object to prefetch. */
+  intent?: string | IntentObject | undefined;
+  /** Optional context data for cache key generation. */
+  context?: Record<string, unknown> | undefined;
+  /** Optional authorized data identifiers for prefetch. */
+  authorizedDataIdentifiers?: string[] | undefined;
+  /** Whether prefetching is enabled. Defaults to true. */
+  enabled?: boolean | undefined;
+}
+
+/**
+ * Return type of the usePrefetch hook.
+ */
+export interface UsePrefetchResult {
+  /** Current status of the prefetch operation. */
+  status: PrefetchStatus;
+  /** Error from a failed prefetch, if any. */
+  error: FluiError | undefined;
+  /** Cancel the current in-flight prefetch. */
+  cancel: () => void;
 }

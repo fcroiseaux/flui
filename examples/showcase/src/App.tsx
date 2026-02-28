@@ -1,11 +1,13 @@
 import type { GenerationTrace, UISpecification } from '@flui/core';
-import { DebugOverlay, FluiProvider, LiquidView, useFluidDebug } from '@flui/react';
-import { useCallback, useEffect, useState } from 'react';
+import { DebugOverlay, FluiProvider, LiquidView, renderSpec, useFluiContext, useFluidDebug, usePrefetch } from '@flui/react';
+import type { PrefetchStatus } from '@flui/core';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { SetupResult } from './flui-setup';
 import { setupFlui } from './flui-setup';
 import { scenarios } from './scenarios';
 import type { IntentVariant, Scenario } from './scenarios';
+import { PAGE_INTENTS, PAGE_SPECS, enqueuePageMock } from './scenarios/prefetch-demo';
 
 function LoadingFallback() {
   return (
@@ -187,6 +189,150 @@ function IntentEditor({ intent, defaultIntent, isLiveMode, variants, onIntentCha
   );
 }
 
+/* ── Tab definitions for the prefetch demo ── */
+const PREFETCH_TABS = [
+  { key: 'overview', label: 'Product Overview', intent: PAGE_INTENTS.overview },
+  { key: 'pricing', label: 'Pricing Plans', intent: PAGE_INTENTS.pricing },
+  { key: 'docs', label: 'Documentation', intent: PAGE_INTENTS.docs },
+] as const;
+
+type PrefetchTabKey = (typeof PREFETCH_TABS)[number]['key'];
+
+interface PrefetchDemoProps {
+  setup: SetupResult;
+}
+
+function PrefetchDemo({ setup }: PrefetchDemoProps) {
+  const { registry } = useFluiContext();
+
+  // ── Tab state ──
+  const [leftTab, setLeftTab] = useState<PrefetchTabKey>('overview');
+  const [rightTab, setRightTab] = useState<PrefetchTabKey>('overview');
+
+  // ── Left panel: simulated loading ──
+  const [leftPhase, setLeftPhase] = useState<'idle' | 'loading' | 'rendered'>('rendered');
+  const [leftSpec, setLeftSpec] = useState<UISpecification>(PAGE_SPECS.overview!());
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleLeftTabClick = (tabKey: PrefetchTabKey) => {
+    if (tabKey === leftTab) return;
+    setLeftTab(tabKey);
+    setLeftPhase('loading');
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      setLeftSpec(PAGE_SPECS[tabKey]!());
+      setLeftPhase('rendered');
+    }, 800);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  // ── Right panel: prefetch hooks (one per page) ──
+  // These fire on mount and populate the cache in the background.
+  // The status bar shows the real prefetch lifecycle (idle → in-flight → cached).
+  const prefetchA = usePrefetch({ intent: PAGE_INTENTS.overview });
+  const prefetchB = usePrefetch({ intent: PAGE_INTENTS.pricing });
+  const prefetchC = usePrefetch({ intent: PAGE_INTENTS.docs });
+
+  const prefetchStatuses: Record<PrefetchTabKey, PrefetchStatus> = {
+    overview: prefetchA.status,
+    pricing: prefetchB.status,
+    docs: prefetchC.status,
+  };
+
+  // ── Right panel: render directly via renderSpec once prefetch is done ──
+  // Using renderSpec instead of LiquidView avoids cache-key matching issues
+  // inherent to the MockConnector's intent-agnostic FIFO queue.
+  // In a real LLM environment, LiquidView would get a cache hit from prefetch.
+  const rightSpec = useMemo(() => PAGE_SPECS[rightTab]!(), [rightTab]);
+  const rightStatus = prefetchStatuses[rightTab];
+
+  const handleRightTabClick = (tabKey: PrefetchTabKey) => {
+    if (tabKey === rightTab) return;
+    setRightTab(tabKey);
+  };
+
+  return (
+    <div className="prefetch-demo">
+      <div className="prefetch-panels">
+        {/* ── Left panel: Standard (simulated delay) ── */}
+        <div className="prefetch-panel">
+          <div className="prefetch-panel-label">Standard</div>
+          <div className="prefetch-tabs">
+            {PREFETCH_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                className={`prefetch-tab ${leftTab === tab.key ? 'active' : ''}`}
+                onClick={() => handleLeftTabClick(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="liquid-view-container">
+            {leftPhase === 'loading' ? (
+              <div className="loading-fallback">
+                <div className="loading-spinner" />
+                Generating UI...
+              </div>
+            ) : (
+              renderSpec(leftSpec, registry)
+            )}
+          </div>
+        </div>
+
+        {/* ── Right panel: With Prefetch (instant from cache) ── */}
+        <div className="prefetch-panel">
+          <div className="prefetch-panel-label">With Prefetch</div>
+          <div className="prefetch-tabs">
+            {PREFETCH_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                className={`prefetch-tab ${rightTab === tab.key ? 'active' : ''}`}
+                onClick={() => handleRightTabClick(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="liquid-view-container">
+            {rightStatus === 'cached' || rightTab === 'overview' ? (
+              renderSpec(rightSpec, registry)
+            ) : rightStatus === 'in-flight' ? (
+              <div className="loading-fallback">
+                <div className="loading-spinner" />
+                Prefetching...
+              </div>
+            ) : rightStatus === 'failed' ? (
+              <div className="loading-fallback">Prefetch failed</div>
+            ) : (
+              renderSpec(rightSpec, registry)
+            )}
+          </div>
+
+          {/* ── Status bar ── */}
+          <div className="prefetch-status-bar">
+            {PREFETCH_TABS.map((tab) => (
+              <div key={tab.key} className="prefetch-status-item">
+                <span className={`prefetch-status-dot ${prefetchStatuses[tab.key]}`} />
+                <span className="prefetch-status-label">{tab.label}</span>
+                <span className="prefetch-status-value">{prefetchStatuses[tab.key]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function App() {
   const [setup, setSetup] = useState<SetupResult | null>(null);
   const [activeScenario, setActiveScenario] = useState<Scenario>(scenarios[0]!);
@@ -224,7 +370,14 @@ export function App() {
     // Enqueue mock response synchronously BEFORE React re-renders
     if (setup.mockConnector) {
       setup.mockConnector.reset();
-      scenario.enqueue(setup.mockConnector);
+      if (scenario.id === 'prefetch-demo') {
+        // Only 3 mocks needed: one per prefetch hook (no LiquidView on initial render)
+        enqueuePageMock(setup.mockConnector, 'overview');  // prefetch A
+        enqueuePageMock(setup.mockConnector, 'pricing');   // prefetch B
+        enqueuePageMock(setup.mockConnector, 'docs');      // prefetch C
+      } else {
+        scenario.enqueue(setup.mockConnector);
+      }
     }
     setActiveScenario(scenario);
     setActiveIntent(scenario.intent);
@@ -328,13 +481,15 @@ export function App() {
             </div>
           )}
 
-          {genKey !== null && (
+          {genKey !== null && activeScenario.id === 'prefetch-demo' ? (
+            <PrefetchDemo key={genKey} setup={setup} />
+          ) : genKey !== null ? (
             <ScenarioRunner
               key={genKey}
               intent={activeIntent}
               setup={setup}
             />
-          )}
+          ) : null}
         </main>
       </div>
     </FluiProvider>

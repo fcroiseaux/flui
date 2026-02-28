@@ -1,5 +1,4 @@
 import {
-  buildCacheKey,
   type ComponentSpec,
   createGenerationOrchestrator,
   createPromptBuilder,
@@ -12,7 +11,6 @@ import {
   type IntentObject,
   isError,
   parseIntent,
-  SPEC_VERSION,
 } from '@flui/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -131,38 +129,34 @@ export function useLiquidView(
       }
       const intentObject = parseResult.value;
 
-      // ── Cache check: serve from instance cache if available ──
+      // ── Instance-aware path: delegate to instance.generate() for correct
+      //    cache key construction and in-flight prefetch deduplication ──
       const instance = latestInstanceRef.current;
       if (instance) {
         const requestContext = {
           ...(latestContextRef.current ?? {}),
           ...(latestDataRef.current ?? {}),
         };
-        const cacheKey = await buildCacheKey(
-          intentObject.sanitizedText,
-          { request: requestContext },
-          String(ctx.registry.version),
-          SPEC_VERSION,
-        );
-        const cacheResult = await instance.modules.cache.get(cacheKey);
-        if (cacheResult.hit && cacheResult.value) {
-          if (signal.aborted) return;
+        const genResult = await instance.generate({
+          intent: options.intent!,
+          context: requestContext,
+          signal,
+        });
 
-          trace.addStep({
-            module: 'cache',
-            operation: 'hit',
-            durationMs: 0,
-            metadata: { level: cacheResult.level, key: cacheKey.slice(0, 12) },
-          });
+        if (signal.aborted) return;
 
-          const newComponentIds = collectComponentIds(cacheResult.value.components);
-          viewStateStore.reconcile(newComponentIds);
-          updateState({ status: 'rendering', spec: cacheResult.value, trace });
+        if (isError(genResult)) {
+          updateState({ status: 'error', error: genResult.error, fallback: true });
           return;
         }
+
+        const newComponentIds = collectComponentIds(genResult.value.components);
+        viewStateStore.reconcile(newComponentIds);
+        updateState({ status: 'rendering', spec: genResult.value, trace });
+        return;
       }
 
-      // ── Generation path: orchestrator + validateWithRetry ──
+      // ── Generation path (no instance): orchestrator + validateWithRetry ──
       const generationConfig = latestConfigRef.current?.generationConfig;
       const connector = latestConfigRef.current?.connector ?? generationConfig?.connector;
       const model = generationConfig?.model;
@@ -255,21 +249,6 @@ export function useLiquidView(
       if (isError(validResult)) {
         updateState({ status: 'error', error: validResult.error, fallback: true });
         return;
-      }
-
-      // Store validated spec in instance cache for future hits
-      if (instance) {
-        const requestContext = {
-          ...(latestContextRef.current ?? {}),
-          ...(latestDataRef.current ?? {}),
-        };
-        const cacheKey = await buildCacheKey(
-          intentObject.sanitizedText,
-          { request: requestContext },
-          String(ctx.registry.version),
-          SPEC_VERSION,
-        );
-        await instance.modules.cache.set(cacheKey, validResult.value);
       }
 
       // Reconcile view state: prune orphaned component state, preserve matching IDs

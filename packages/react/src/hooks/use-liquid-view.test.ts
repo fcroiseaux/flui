@@ -1,12 +1,16 @@
 import {
+  type CacheManager,
   ComponentRegistry,
   err,
   FLUI_E010,
+  FLUI_E014,
   FluiError,
+  type FluiInstance,
   type GenerationOrchestrator,
   type IntentObject,
   type LLMConnector,
   ok,
+  type Result,
   type UISpecification,
   type ValidationPipeline,
 } from '@flui/core';
@@ -98,7 +102,7 @@ describe('useLiquidView', () => {
       validate: mockValidate,
       addValidator: vi.fn().mockReturnValue(ok(undefined)),
       removeValidator: vi.fn().mockReturnValue(false),
-      validateWithRetry: vi.fn(),
+      validateWithRetry: mockValidate,
     } as unknown as ValidationPipeline);
   });
 
@@ -400,6 +404,110 @@ describe('useLiquidView', () => {
       await waitFor(() => {
         expect(mockGenerate).toHaveBeenCalledTimes(1);
       });
+    });
+  });
+
+  describe('in-flight deduplication', () => {
+    function createMockInstance(
+      awaitInflightFn: FluiInstance['awaitInflight'],
+    ): FluiInstance {
+      const testSpec = createTestSpec();
+      const mockCacheGet = vi.fn().mockResolvedValue({ hit: false });
+      return {
+        registry: createTestRegistry(),
+        context: { resolveAll: vi.fn().mockResolvedValue(ok({})) } as unknown as FluiInstance['context'],
+        observer: { collect: vi.fn() } as unknown as FluiInstance['observer'],
+        metrics: { recordCacheEvent: vi.fn(), getCostMetrics: vi.fn(), getCacheMetrics: vi.fn() } as unknown as FluiInstance['metrics'],
+        data: {} as unknown as FluiInstance['data'],
+        config: {
+          connector: createMockConnector(),
+          generationConfig: { connector: createMockConnector(), model: 'test-model' },
+          validationConfig: {},
+        },
+        modules: {
+          generation: { generate: vi.fn().mockResolvedValue(ok(testSpec)) } as unknown as GenerationOrchestrator,
+          validation: { validate: vi.fn().mockResolvedValue(ok(testSpec)) } as unknown as ValidationPipeline,
+          cache: { get: mockCacheGet, set: vi.fn() } as unknown as CacheManager,
+          policy: { evaluate: vi.fn() } as unknown as FluiInstance['modules']['policy'],
+          cost: { estimateCost: vi.fn(), checkBudget: vi.fn() } as unknown as FluiInstance['modules']['cost'],
+          concurrency: { getCircuitBreakerStatus: vi.fn() } as unknown as FluiInstance['modules']['concurrency'],
+        },
+        getMetrics: vi.fn().mockReturnValue({ cost: {}, cache: {} }),
+        generate: vi.fn().mockResolvedValue(ok(testSpec)),
+        prefetch: vi.fn().mockResolvedValue(ok(testSpec)),
+        prefetchMany: vi.fn().mockResolvedValue([]),
+        getPrefetchStatus: vi.fn().mockResolvedValue('idle'),
+        cancelAllPrefetches: vi.fn().mockReturnValue(0),
+        awaitInflight: awaitInflightFn,
+      };
+    }
+
+    it('awaits in-flight prefetch instead of starting new generation', async () => {
+      const testSpec = createTestSpec();
+      const inflightPromise = Promise.resolve(ok(testSpec) as Result<UISpecification>);
+      const instance = createMockInstance(() => inflightPromise);
+
+      // Clear mock call count to isolate this test
+      mockCreateOrchestrator.mockClear();
+
+      const ctx: FluiContextValue = {
+        registry: instance.registry,
+        config: createMockConfig(),
+        instance,
+      };
+
+      const { result } = renderHook(() => useLiquidView({ intent: 'show a button' }, ctx));
+
+      await waitFor(() => {
+        expect(result.current.state.status).toBe('rendering');
+      });
+
+      // The orchestrator should NOT have been called (in-flight was used)
+      expect(mockCreateOrchestrator).not.toHaveBeenCalled();
+    });
+
+    it('falls through to instance.generate when in-flight prefetch fails', async () => {
+      const inflightPromise = Promise.resolve(
+        err(new FluiError(FLUI_E014, 'connector', 'Prefetch failed')) as Result<UISpecification>,
+      );
+      const instance = createMockInstance(() => inflightPromise);
+
+      const ctx: FluiContextValue = {
+        registry: instance.registry,
+        config: createMockConfig(),
+        instance,
+      };
+
+      const { result } = renderHook(() => useLiquidView({ intent: 'show a button' }, ctx));
+
+      await waitFor(() => {
+        // Should eventually reach rendering via instance.generate()
+        const status = result.current.state.status;
+        expect(status === 'rendering' || status === 'error').toBe(true);
+      });
+
+      // instance.generate() should have been called (delegates to instance pipeline)
+      expect(instance.generate).toHaveBeenCalled();
+    });
+
+    it('uses instance.generate when no in-flight exists', async () => {
+      const instance = createMockInstance(() => undefined);
+
+      const ctx: FluiContextValue = {
+        registry: instance.registry,
+        config: createMockConfig(),
+        instance,
+      };
+
+      const { result } = renderHook(() => useLiquidView({ intent: 'show a button' }, ctx));
+
+      await waitFor(() => {
+        const status = result.current.state.status;
+        expect(status === 'rendering' || status === 'error').toBe(true);
+      });
+
+      // instance.generate() should have been called (delegates to instance pipeline)
+      expect(instance.generate).toHaveBeenCalled();
     });
   });
 

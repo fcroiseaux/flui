@@ -112,6 +112,10 @@ export type {
   FluiInstance,
   FluiInstanceConfig,
   FluiModules,
+  PrefetchInput,
+  PrefetchManyOptions,
+  PrefetchResult,
+  PrefetchStatus,
 } from './flui.types';
 // generation/ module
 export type {

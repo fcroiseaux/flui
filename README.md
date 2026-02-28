@@ -19,6 +19,7 @@ Flui does not replace React, Vue, or Angular — it **augments** them. A develop
 - **LLM-agnostic** — works with any provider (OpenAI, Anthropic, Mistral, Ollama, custom)
 - **Secure by design** — the LLM generates declarative JSON specs, never executable code
 - **Observable** — every generation decision is traced, replayable, and auditable
+- **Prefetchable** — decouple LLM generation from rendering with background prefetch for instant navigation
 - **Production-ready** — 3-level caching, budget enforcement, circuit breaker, concurrency control
 
 ## Packages
@@ -26,11 +27,11 @@ Flui does not replace React, Vue, or Angular — it **augments** them. A develop
 | Package | Description |
 |---------|-------------|
 | `@flui/core` | Core generation engine, validation pipeline, caching, cost control |
-| `@flui/react` | React adapter — `<LiquidView>`, `<FluiProvider>`, `<DebugOverlay>` |
+| `@flui/react` | React adapter — `<LiquidView>`, `<FluiProvider>`, `usePrefetch`, `<DebugOverlay>` |
 | `@flui/openai` | OpenAI GPT connector |
 | `@flui/anthropic` | Anthropic Claude connector |
 | `@flui/testing` | MockConnector, spec builders, render helpers for tests |
-| [`examples/showcase`](./examples/showcase/) | Interactive demo app — 4 scenarios, 9 components, zero-config |
+| [`examples/showcase`](./examples/showcase/) | Interactive demo app — 5 scenarios, 9 components, zero-config |
 
 ## Quick Start
 
@@ -88,6 +89,52 @@ function App() {
 
 The `<LiquidView>` component handles the full lifecycle: intent parsing, context resolution, LLM generation, validation, and rendering — with a mandatory fallback for graceful degradation.
 
+### Prefetch for Instant Navigation
+
+Trigger LLM generation in the background before the UI is needed — the result is cached and served instantly when `<LiquidView>` mounts:
+
+```tsx
+import { FluiProvider, LiquidView, usePrefetch } from '@flui/react';
+
+function App() {
+  // Start background generation as soon as the component mounts
+  const { status } = usePrefetch({ intent: 'Show pricing plans' });
+
+  return (
+    <FluiProvider instance={flui}>
+      {/* When the user navigates here, the spec is already cached → instant render */}
+      <LiquidView
+        intent="Show pricing plans"
+        fallback={<LoadingSkeleton />}
+      />
+      <p>Prefetch status: {status}</p> {/* idle → in-flight → cached */}
+    </FluiProvider>
+  );
+}
+```
+
+Imperative API for non-React contexts:
+
+```typescript
+// Prefetch a single intent
+await flui.prefetch({ intent: 'Show pricing plans' });
+
+// Prefetch multiple intents with concurrency control
+await flui.prefetchMany({
+  inputs: [
+    { intent: 'Show pricing plans' },
+    { intent: 'Show documentation' },
+  ],
+  concurrency: 2,
+});
+
+// Check prefetch status
+const status = await flui.getPrefetchStatus({ intent: 'Show pricing plans' });
+// 'idle' | 'in-flight' | 'cached' | 'failed'
+```
+
+Prefetches are deduplicated — concurrent calls for the same intent share a single LLM request. `generate()` automatically awaits in-flight prefetches instead of starting duplicate requests.
+
 ### Custom LLM Connector
 
 Bring any LLM by implementing the `LLMConnector` interface:
@@ -143,6 +190,7 @@ Each state is a discriminated union — strict, type-safe, no states skipped.
 - **Cost manager** — pre-call estimation, post-call recording, session/daily budget enforcement
 - **Circuit breaker** — CLOSED → OPEN → HALF-OPEN pattern with configurable thresholds
 - **Policy engine** — decides serve-from-cache vs generate vs show-fallback
+- **Prefetch & in-flight deduplication** — background generation with `prefetch()`, shared promise registry prevents duplicate LLM calls
 - **Streaming** — `StreamingLLMConnector` with `AsyncIterable<GenerationChunk>` for progressive rendering
 
 ## Error Handling
@@ -198,7 +246,7 @@ A runnable demo application that demonstrates flui's key features in a single in
 pnpm --filter @flui/showcase dev
 ```
 
-Open `http://localhost:5173` and explore four scenarios:
+Open `http://localhost:5173` and explore five scenarios:
 
 | Scenario | Demonstrates |
 |----------|-------------|
@@ -206,6 +254,7 @@ Open `http://localhost:5173` and explore four scenarios:
 | **Context-Aware Dashboard** | Context engine with identity and environment providers driving MetricCard layout |
 | **Interactive Form** | `InteractionSpec` data wiring between Input, Select, and DataTable |
 | **Role-Adaptive UI** | Switching user roles (admin / editor / viewer) re-triggers generation with different specs |
+| **Prefetch: Instant Navigation** | Side-by-side comparison of standard loading delay vs. background prefetch for instant tab switching |
 
 The app includes:
 

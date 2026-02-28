@@ -18,6 +18,7 @@ import type {
   GenerationPolicyEngine,
 } from './policy';
 import type { ComponentRegistry } from './registry';
+import type { FluiError } from './errors';
 import type { UISpecification } from './spec';
 import type { GenerationTrace, LLMConnector } from './types';
 import type { ValidationError, ValidationPipeline, ValidationPipelineConfig } from './validation';
@@ -74,6 +75,34 @@ export interface FluiModules {
 }
 
 /**
+ * Input to FluiInstance.prefetch().
+ * Same shape as FluiGenerateInput for API consistency.
+ */
+export type PrefetchInput = FluiGenerateInput;
+
+/**
+ * Status of a prefetch operation.
+ */
+export type PrefetchStatus = 'idle' | 'in-flight' | 'cached' | 'failed';
+
+/**
+ * Options for FluiInstance.prefetchMany().
+ */
+export interface PrefetchManyOptions {
+  inputs: PrefetchInput[];
+  concurrency?: number | undefined;
+}
+
+/**
+ * Result of a single prefetch operation within prefetchMany().
+ */
+export interface PrefetchResult {
+  cacheKey: string;
+  status: 'cached' | 'failed';
+  error?: FluiError | undefined;
+}
+
+/**
  * Fully wired factory result.
  */
 export interface FluiInstance {
@@ -86,4 +115,9 @@ export interface FluiInstance {
   readonly modules: FluiModules;
   readonly getMetrics: () => { cost: CostMetrics; cache: CacheMetrics };
   generate(input: FluiGenerateInput): Promise<Result<UISpecification>>;
+  prefetch(input: PrefetchInput): Promise<Result<UISpecification>>;
+  prefetchMany(options: PrefetchManyOptions): Promise<PrefetchResult[]>;
+  getPrefetchStatus(input: PrefetchInput): Promise<PrefetchStatus>;
+  cancelAllPrefetches(): number;
+  awaitInflight(cacheKey: string): Promise<Result<UISpecification>> | undefined;
 }

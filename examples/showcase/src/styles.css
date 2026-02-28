@@ -567,3 +567,128 @@ body {
 .empty-state p {
   font-size: 13px;
 }
+
+/* Prefetch Demo */
+.prefetch-demo {
+  margin-top: 8px;
+}
+
+.prefetch-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.prefetch-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prefetch-panel .liquid-view-container {
+  border: none;
+  padding: 16px;
+  background: var(--color-bg);
+  min-height: 280px;
+}
+
+.prefetch-panel-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent);
+}
+
+.prefetch-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 8px;
+}
+
+.prefetch-tab {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius) var(--radius) 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.prefetch-tab:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.prefetch-tab.active {
+  color: var(--color-accent);
+  border-color: var(--color-border);
+  background: var(--color-bg);
+}
+
+.prefetch-status-bar {
+  display: flex;
+  gap: 16px;
+  padding: 10px 12px;
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+}
+
+.prefetch-status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.prefetch-status-label {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.prefetch-status-value {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-secondary);
+}
+
+.prefetch-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-border);
+  transition: background 0.2s ease;
+}
+
+.prefetch-status-dot.idle {
+  background: var(--color-text-secondary);
+}
+
+.prefetch-status-dot.in-flight {
+  background: var(--color-info);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.prefetch-status-dot.cached {
+  background: var(--color-success);
+}
+
+.prefetch-status-dot.failed {
+  background: var(--color-error);
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.7; }
+}

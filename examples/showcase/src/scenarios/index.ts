@@ -25,15 +25,18 @@ export { helloWorldScenario } from './hello-world';
 export { dashboardScenario } from './dashboard';
 export { formInteractionsScenario } from './form-interactions';
 export { adaptiveUiScenario } from './adaptive-ui';
+export { prefetchDemoScenario } from './prefetch-demo';
 
 import { helloWorldScenario } from './hello-world';
 import { dashboardScenario } from './dashboard';
 import { formInteractionsScenario } from './form-interactions';
 import { adaptiveUiScenario } from './adaptive-ui';
+import { prefetchDemoScenario } from './prefetch-demo';
 
 export const scenarios: Scenario[] = [
   helloWorldScenario,
   dashboardScenario,
   formInteractionsScenario,
   adaptiveUiScenario,
+  prefetchDemoScenario,
 ];

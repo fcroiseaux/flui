@@ -3,7 +3,7 @@
 // Components
 export { FluiProvider, useFluiContext } from './FluiProvider';
 // Hooks
-export { useLiquidView } from './hooks';
+export { useLiquidView, usePrefetch } from './hooks';
 export { LiquidView } from './LiquidView';
 // Types
 export type {
@@ -20,6 +20,8 @@ export type {
   TransitionState,
   UseLiquidViewOptions,
   UseLiquidViewResult,
+  UsePrefetchOptions,
+  UsePrefetchResult,
   ViewStateStore,
 } from './react.types';
 // Renderer
