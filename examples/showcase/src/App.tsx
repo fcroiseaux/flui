@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { SetupResult } from './flui-setup';
 import { setupFlui } from './flui-setup';
 import { scenarios } from './scenarios';
-import type { Scenario } from './scenarios';
+import type { IntentVariant, Scenario } from './scenarios';
 
 function LoadingFallback() {
   return (
@@ -49,11 +49,11 @@ function MetricsBar({ setup }: MetricsBarProps) {
 }
 
 interface ScenarioRunnerProps {
-  scenario: Scenario;
+  intent: string;
   setup: SetupResult;
 }
 
-function ScenarioRunner({ scenario, setup }: ScenarioRunnerProps) {
+function ScenarioRunner({ intent, setup }: ScenarioRunnerProps) {
   const [currentSpec, setCurrentSpec] = useState<UISpecification | null>(null);
   const [traces, setTraces] = useState<GenerationTrace[]>([]);
 
@@ -89,7 +89,7 @@ function ScenarioRunner({ scenario, setup }: ScenarioRunnerProps) {
     <>
       <div className="liquid-view-container">
         <LiquidView
-          intent={scenario.intent}
+          intent={intent}
           fallback={<LoadingFallback />}
           onStateChange={handleStateChange}
         />
@@ -99,13 +99,105 @@ function ScenarioRunner({ scenario, setup }: ScenarioRunnerProps) {
   );
 }
 
+interface IntentEditorProps {
+  /** The currently active intent (display value). */
+  intent: string;
+  /** The scenario's canonical base intent (used for "Default" chip). */
+  defaultIntent: string;
+  isLiveMode: boolean;
+  variants: IntentVariant[];
+  onIntentChange: (intent: string, variant?: IntentVariant) => void;
+}
+
+function IntentEditor({ intent, defaultIntent, isLiveMode, variants, onIntentChange }: IntentEditorProps) {
+  const [draft, setDraft] = useState(intent);
+
+  // Sync draft when external intent changes (scenario switch, chip click, regenerate)
+  useEffect(() => {
+    setDraft(intent);
+  }, [intent]);
+
+  const handleRegenerate = () => {
+    if (draft.trim() && draft.trim() !== intent.trim()) {
+      onIntentChange(draft.trim());
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleRegenerate();
+    }
+  };
+
+  const isDirty = draft.trim() !== intent.trim();
+
+  return (
+    <div className="intent-editor">
+      <div className="intent-editor-label">
+        Intent sent to LLM:
+        {!isLiveMode && isDirty && (
+          <span className="intent-mock-hint">Mock mode — use a suggestion chip for different UI</span>
+        )}
+      </div>
+      <div className="intent-editor-row">
+        <textarea
+          className="intent-textarea"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={handleKeyDown}
+          rows={2}
+          aria-label="Edit the intent sent to the LLM"
+        />
+        <button
+          type="button"
+          className="intent-regenerate-btn"
+          onClick={handleRegenerate}
+          disabled={!isDirty}
+          aria-label="Regenerate UI from this intent"
+        >
+          Regenerate
+        </button>
+      </div>
+      {variants.length > 0 && (
+        <div className="intent-suggestions">
+          <span className="intent-suggestions-label">Try a different intent:</span>
+          {variants.map((v) => (
+            <button
+              key={v.intent}
+              type="button"
+              className={`intent-chip ${intent === v.intent ? 'active' : ''}`}
+              onClick={() => onIntentChange(v.intent, v)}
+              aria-pressed={intent === v.intent}
+            >
+              {v.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`intent-chip ${intent === defaultIntent ? 'active' : ''}`}
+            onClick={() => onIntentChange(defaultIntent)}
+            aria-pressed={intent === defaultIntent}
+          >
+            Default
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function App() {
   const [setup, setSetup] = useState<SetupResult | null>(null);
   const [activeScenario, setActiveScenario] = useState<Scenario>(scenarios[0]!);
   const [activeRole, setActiveRole] = useState('admin');
+  const [activeIntent, setActiveIntent] = useState(scenarios[0]!.intent);
+  // Track the active variant separately so role-switch and "Default" chip work reliably.
+  // null = using the scenario's base intent or a free-text edit.
+  const [activeVariant, setActiveVariant] = useState<IntentVariant | null>(null);
   // genKey gates rendering: null = not ready, number = LiquidView can mount.
-  // The mock is enqueued BEFORE genKey is set, so the queue is always populated
-  // when LiquidView's effect fires.
+  // The mock is enqueued synchronously BEFORE genKey is bumped, so the queue
+  // is always populated when LiquidView's effect fires.
   const [genKey, setGenKey] = useState<number | null>(null);
 
   useEffect(() => {
@@ -129,22 +221,46 @@ export function App() {
   }
 
   const handleScenarioSelect = (scenario: Scenario) => {
-    // Enqueue mock response synchronously in the handler, BEFORE React re-renders
+    // Enqueue mock response synchronously BEFORE React re-renders
     if (setup.mockConnector) {
       setup.mockConnector.reset();
       scenario.enqueue(setup.mockConnector);
     }
     setActiveScenario(scenario);
+    setActiveIntent(scenario.intent);
+    setActiveVariant(null);
     setActiveRole('admin');
     setGenKey((prev) => (prev ?? 0) + 1);
   };
 
   const handleRoleChange = (role: string) => {
+    // Enqueue mock response synchronously BEFORE React re-renders.
+    // Use the tracked activeVariant (not a string lookup) for reliable enqueue.
     if (setup.mockConnector) {
       setup.mockConnector.reset();
-      activeScenario.enqueue(setup.mockConnector, role);
+      if (activeVariant) {
+        activeVariant.enqueue(setup.mockConnector, role);
+      } else {
+        activeScenario.enqueue(setup.mockConnector, role);
+      }
     }
     setActiveRole(role);
+    setGenKey((prev) => (prev ?? 0) + 1);
+  };
+
+  const handleIntentChange = (newIntent: string, variant?: IntentVariant) => {
+    // Enqueue mock response synchronously BEFORE React re-renders
+    if (setup.mockConnector) {
+      setup.mockConnector.reset();
+      if (variant) {
+        variant.enqueue(setup.mockConnector, activeRole);
+      } else {
+        // Default or free-text: use scenario's base spec
+        activeScenario.enqueue(setup.mockConnector, activeRole);
+      }
+    }
+    setActiveIntent(newIntent);
+    setActiveVariant(variant ?? null);
     setGenKey((prev) => (prev ?? 0) + 1);
   };
 
@@ -189,6 +305,14 @@ export function App() {
             <p>{activeScenario.description}</p>
           </div>
 
+          <IntentEditor
+            intent={activeIntent}
+            defaultIntent={activeScenario.intent}
+            isLiveMode={setup.isLiveMode}
+            variants={activeScenario.variants ?? []}
+            onIntentChange={handleIntentChange}
+          />
+
           {activeScenario.supportsRoles && (
             <div className="role-switcher">
               {['admin', 'editor', 'viewer'].map((role) => (
@@ -207,7 +331,7 @@ export function App() {
           {genKey !== null && (
             <ScenarioRunner
               key={genKey}
-              scenario={activeScenario}
+              intent={activeIntent}
               setup={setup}
             />
           )}

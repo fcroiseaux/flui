@@ -1,7 +1,7 @@
 import type { UISpecification } from '@flui/core';
 import { createSpecBuilder } from '@flui/testing';
 import type { MockConnector } from '@flui/testing';
-import type { Scenario } from './index';
+import type { IntentVariant, Scenario } from './index';
 
 const specsByRole: Record<string, () => UISpecification> = {
   admin: () =>
@@ -160,6 +160,169 @@ function enqueue(mock: MockConnector, role?: string): void {
   });
 }
 
+/* ── Variant: permission-aware settings ── */
+const settingsByRole: Record<string, () => UISpecification> = {
+  admin: () =>
+    createSpecBuilder()
+      .addComponent({
+        id: 'heading-1',
+        componentType: 'Heading',
+        props: { level: 2, text: 'System Configuration', 'aria-live': 'polite' },
+      })
+      .addComponent({
+        id: 'badge-role',
+        componentType: 'StatusBadge',
+        props: { text: 'Admin', status: 'error', 'aria-live': 'polite' },
+      })
+      .addComponent({
+        id: 'text-intro',
+        componentType: 'Text',
+        props: { text: 'Full access to all system settings, security policies, and integration configurations.', 'aria-live': 'polite' },
+      })
+      .addComponent({
+        id: 'select-auth',
+        componentType: 'Select',
+        props: {
+          label: 'Auth Provider',
+          'aria-label': 'Authentication provider',
+          options: [
+            { value: 'oauth', label: 'OAuth 2.0' },
+            { value: 'saml', label: 'SAML SSO' },
+            { value: 'ldap', label: 'LDAP' },
+          ],
+        },
+      })
+      .addComponent({
+        id: 'select-mfa',
+        componentType: 'Select',
+        props: {
+          label: 'MFA Policy',
+          'aria-label': 'Multi-factor authentication policy',
+          options: [
+            { value: 'required', label: 'Required for All' },
+            { value: 'optional', label: 'Optional' },
+            { value: 'admin-only', label: 'Admins Only' },
+          ],
+        },
+      })
+      .addComponent({
+        id: 'btn-save',
+        componentType: 'Button',
+        props: { label: 'Save Configuration', variant: 'primary', 'aria-label': 'Save Configuration' },
+      })
+      .addComponent({
+        id: 'btn-reset',
+        componentType: 'Button',
+        props: { label: 'Reset to Defaults', variant: 'danger', 'aria-label': 'Reset to Defaults' },
+      })
+      .withLayout({ type: 'stack', direction: 'vertical', spacing: 12 })
+      .withMetadata({ model: 'mock-model' })
+      .build(),
+
+  editor: () =>
+    createSpecBuilder()
+      .addComponent({
+        id: 'heading-1',
+        componentType: 'Heading',
+        props: { level: 2, text: 'Profile Settings', 'aria-live': 'polite' },
+      })
+      .addComponent({
+        id: 'badge-role',
+        componentType: 'StatusBadge',
+        props: { text: 'Editor', status: 'warning', 'aria-live': 'polite' },
+      })
+      .addComponent({
+        id: 'text-intro',
+        componentType: 'Text',
+        props: { text: 'You can update your personal settings. System-wide configuration requires admin access.', 'aria-live': 'polite' },
+      })
+      .addComponent({
+        id: 'input-name',
+        componentType: 'Input',
+        props: { label: 'Display Name', placeholder: 'Your display name', type: 'text', 'aria-label': 'Display Name' },
+      })
+      .addComponent({
+        id: 'select-theme',
+        componentType: 'Select',
+        props: {
+          label: 'Theme',
+          'aria-label': 'Interface theme',
+          options: [
+            { value: 'dark', label: 'Dark' },
+            { value: 'light', label: 'Light' },
+            { value: 'auto', label: 'System' },
+          ],
+        },
+      })
+      .addComponent({
+        id: 'btn-save',
+        componentType: 'Button',
+        props: { label: 'Update Profile', variant: 'primary', 'aria-label': 'Update Profile' },
+      })
+      .withLayout({ type: 'stack', direction: 'vertical', spacing: 12 })
+      .withMetadata({ model: 'mock-model' })
+      .build(),
+
+  viewer: () =>
+    createSpecBuilder()
+      .addComponent({
+        id: 'heading-1',
+        componentType: 'Heading',
+        props: { level: 2, text: 'Account Info', 'aria-live': 'polite' },
+      })
+      .addComponent({
+        id: 'badge-role',
+        componentType: 'StatusBadge',
+        props: { text: 'Viewer', status: 'info', 'aria-live': 'polite' },
+      })
+      .addComponent({
+        id: 'text-intro',
+        componentType: 'Text',
+        props: { text: 'Read-only view of your account information. Contact an admin to request changes.', 'aria-live': 'polite' },
+      })
+      .addComponent({
+        id: 'card-info',
+        componentType: 'Card',
+        props: { title: 'Account Details', subtitle: 'Last updated 2 days ago' },
+        children: [
+          {
+            id: 'text-email',
+            componentType: 'Text',
+            props: { text: 'Email: viewer@company.dev', 'aria-live': 'polite' },
+          },
+          {
+            id: 'text-joined',
+            componentType: 'Text',
+            props: { text: 'Joined: January 2026', variant: 'caption', 'aria-live': 'polite' },
+          },
+        ],
+      })
+      .withLayout({ type: 'stack', direction: 'vertical', spacing: 12 })
+      .withMetadata({ model: 'mock-model' })
+      .build(),
+};
+
+const variants: IntentVariant[] = [
+  {
+    label: 'Permission-aware settings',
+    intent: 'Show a settings page where available options depend on the user role',
+    enqueue(mock: MockConnector, role?: string) {
+      const key = role ?? 'admin';
+      const builder = settingsByRole[key] ?? settingsByRole.admin;
+      mock.enqueue({
+        content: JSON.stringify(builder!()),
+        model: 'mock-model',
+        usage: { promptTokens: 160, completionTokens: 340, totalTokens: 500 },
+      });
+    },
+    getSpec(role?: string) {
+      const key = role ?? 'admin';
+      const builder = settingsByRole[key] ?? settingsByRole.admin;
+      return builder!();
+    },
+  },
+];
+
 export const adaptiveUiScenario: Scenario = {
   id: 'adaptive-ui',
   title: 'Role-Adaptive UI',
@@ -169,4 +332,5 @@ export const adaptiveUiScenario: Scenario = {
   supportsRoles: true,
   enqueue,
   getSpec: buildSpec,
+  variants,
 };

@@ -1,6 +1,13 @@
 import type { UISpecification } from '@flui/core';
 import type { MockConnector } from '@flui/testing';
 
+export interface IntentVariant {
+  label: string;
+  intent: string;
+  enqueue(mock: MockConnector, role?: string): void;
+  getSpec(role?: string): UISpecification;
+}
+
 export interface Scenario {
   id: string;
   title: string;
@@ -10,6 +17,8 @@ export interface Scenario {
   supportsRoles?: boolean;
   enqueue(mock: MockConnector, role?: string): void;
   getSpec(role?: string): UISpecification;
+  /** Alternate intents with different mock specs to demonstrate intent-driven UI */
+  variants?: IntentVariant[];
 }
 
 export { helloWorldScenario } from './hello-world';
