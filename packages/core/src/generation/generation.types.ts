@@ -17,8 +17,12 @@ export interface GenerationConfig {
   temperature?: number | undefined;
   /** Response length limit. */
   maxTokens?: number | undefined;
-  /** Structured output hint. */
-  responseFormat?: 'json' | 'text' | undefined;
+  /** Structured output hint. Use an object with type 'json_schema' for OpenAI Structured Outputs. */
+  responseFormat?:
+    | 'json'
+    | 'text'
+    | { type: 'json_schema'; jsonSchema: Record<string, unknown> }
+    | undefined;
 }
 
 /**

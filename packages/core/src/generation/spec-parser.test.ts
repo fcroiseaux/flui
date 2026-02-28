@@ -104,8 +104,8 @@ describe('SpecParser', () => {
     expect(result.error.category).toBe('generation');
   });
 
-  it('returns FLUI_E016 with Zod error details in FluiError context', () => {
-    const invalidSpec = {
+  it('strips unknown fields and parses successfully', () => {
+    const specWithExtra = {
       version: SPEC_VERSION,
       components: [
         {
@@ -119,16 +119,49 @@ describe('SpecParser', () => {
       interactions: [],
       metadata: { generatedAt: Date.now() },
     };
-    const response = makeLLMResponse(JSON.stringify(invalidSpec));
+    const response = makeLLMResponse(JSON.stringify(specWithExtra));
     const result = parser.parse(response);
 
-    expect(isError(result)).toBe(true);
-    if (!isError(result)) return;
-    const fluiError = result.error as FluiError;
-    expect(fluiError.code).toBe(FLUI_E016);
-    expect(fluiError.context).toBeDefined();
-    expect(fluiError.context?.zodErrors).toBeDefined();
-    expect(Array.isArray(fluiError.context?.zodErrors)).toBe(true);
+    expect(isOk(result)).toBe(true);
+    if (!isOk(result)) return;
+    expect((result.value.components[0] as Record<string, unknown>)['unknownField']).toBeUndefined();
+  });
+
+  it('converts null optional fields to undefined (OpenAI Structured Outputs compat)', () => {
+    const spec = {
+      version: SPEC_VERSION,
+      components: [
+        {
+          id: 'btn-1',
+          componentType: 'Button',
+          props: { label: 'Click me' },
+          key: null,
+          children: null,
+        },
+      ],
+      layout: { type: 'stack', direction: null, spacing: null, alignment: null, children: null },
+      interactions: [
+        { source: 'a', target: 'b', event: 'click', dataMapping: null },
+      ],
+      metadata: {
+        generatedAt: Date.now(),
+        model: null,
+        intentHash: null,
+        traceId: null,
+        custom: null,
+      },
+    };
+    const response = makeLLMResponse(JSON.stringify(spec));
+    const result = parser.parse(response);
+
+    expect(isOk(result)).toBe(true);
+    if (!isOk(result)) return;
+    expect(result.value.version).toBe(SPEC_VERSION);
+    expect(result.value.components[0]?.children).toBeUndefined();
+    expect(result.value.metadata.model).toBeUndefined();
+    expect(result.value.metadata.intentHash).toBeUndefined();
+    expect(result.value.metadata.traceId).toBeUndefined();
+    expect(result.value.metadata.custom).toBeUndefined();
   });
 
   it('extracts JSON preceded by text', () => {

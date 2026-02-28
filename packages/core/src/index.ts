@@ -208,6 +208,7 @@ export {
   interactionSpecSchema,
   layoutSpecSchema,
   SPEC_VERSION,
+  uiSpecificationJsonSchema,
   uiSpecificationMetadataSchema,
   uiSpecificationSchema,
 } from './spec';

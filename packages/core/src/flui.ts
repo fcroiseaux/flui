@@ -21,7 +21,6 @@ import { createValidationPipeline, type ValidationError } from './validation';
 
 export const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'connector'> = {
   model: 'gpt-4o',
-  responseFormat: 'json',
 };
 
 export const DEFAULT_CACHE_CONFIG: CacheConfig = {

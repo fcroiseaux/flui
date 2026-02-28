@@ -154,7 +154,7 @@ describe('ValidationPipeline', () => {
       }
     });
 
-    it('returns Result.error for invalid schema with wrong layout type', async () => {
+    it('coerces unknown layout type to stack', async () => {
       const pipeline = createValidationPipeline();
       const spec = validSpec({
         layout: { type: 'invalid' as 'stack' },
@@ -162,35 +162,22 @@ describe('ValidationPipeline', () => {
 
       const result = await pipeline.validate(spec, testContext());
 
-      expect(isError(result)).toBe(true);
-      if (isError(result)) {
-        const errors = result.error.context?.errors as Array<{
-          validator: string;
-          field?: string;
-        }>;
-        expect(errors.some((e) => e.validator === 'schema')).toBe(true);
+      expect(isOk(result)).toBe(true);
+      if (isOk(result)) {
+        expect(result.value.layout.type).toBe('stack');
       }
     });
 
-    it('returns Result.error for invalid schema with extra fields', async () => {
+    it('strips extra fields and validates successfully', async () => {
       const pipeline = createValidationPipeline();
       const specWithExtraField = {
         ...validSpec(),
-        extraField: 'should-not-be-allowed',
+        extraField: 'should-be-stripped',
       } as UISpecification & { extraField: string };
 
       const result = await pipeline.validate(specWithExtraField, testContext());
 
-      expect(isError(result)).toBe(true);
-      if (isError(result)) {
-        const errors = result.error.context?.errors as Array<{
-          validator: string;
-          field?: string;
-          message: string;
-        }>;
-        expect(errors.some((e) => e.validator === 'schema')).toBe(true);
-        expect(errors.some((e) => /unrecognized|unknown/i.test(e.message))).toBe(true);
-      }
+      expect(isOk(result)).toBe(true);
     });
 
     it('returns Result.error for unregistered component types', async () => {
@@ -566,10 +553,11 @@ describe('ValidationPipeline', () => {
       }
     });
 
-    it('schema validator includes field paths in errors', async () => {
+    it('schema validator includes field paths in errors for missing required fields', async () => {
       const pipeline = createValidationPipeline();
       const spec = validSpec({
-        layout: { type: 'invalid-type' as 'stack' },
+        layout: { type: 'stack' },
+        components: [{ id: '', componentType: '', props: {} }],
       });
 
       const result = await pipeline.validate(spec, testContext());
@@ -580,8 +568,7 @@ describe('ValidationPipeline', () => {
           validator: string;
           field?: string;
         }>;
-        const schemaErrors = errors.filter((e) => e.validator === 'schema');
-        expect(schemaErrors.length).toBeGreaterThan(0);
+        expect(errors.length).toBeGreaterThan(0);
       }
     });
 

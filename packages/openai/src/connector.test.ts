@@ -115,6 +115,50 @@ describe('OpenAIConnector', () => {
       );
     });
 
+    it('maps json_schema responseFormat to OpenAI Structured Outputs', async () => {
+      mockCreate.mockResolvedValueOnce({
+        choices: [{ message: { content: '{"version":"1.0.0"}' } }],
+        model: 'gpt-4o',
+        usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+      });
+
+      const testSchema = { type: 'object', properties: { version: { type: 'string' } } };
+      const connector = createOpenAIConnector({ apiKey: 'sk-test' });
+      await connector.generate('Generate UI', {
+        model: 'gpt-4o',
+        responseFormat: { type: 'json_schema', jsonSchema: testSchema },
+      });
+
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'gpt-4o',
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'UISpecification',
+              strict: false,
+              schema: testSchema,
+            },
+          },
+        }),
+        expect.objectContaining({ signal: undefined }),
+      );
+    });
+
+    it('does not set response_format when responseFormat is undefined', async () => {
+      mockCreate.mockResolvedValueOnce({
+        choices: [{ message: { content: 'text response' } }],
+        model: 'gpt-4o',
+        usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 },
+      });
+
+      const connector = createOpenAIConnector({ apiKey: 'sk-test' });
+      await connector.generate('Hi', { model: 'gpt-4o' });
+
+      const callArgs = mockCreate.mock.calls[0]?.[0];
+      expect(callArgs?.response_format).toBeUndefined();
+    });
+
     it('returns FLUI_E010 when AbortSignal is already aborted', async () => {
       const controller = new AbortController();
       controller.abort();

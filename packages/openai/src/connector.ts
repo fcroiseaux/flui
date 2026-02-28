@@ -16,6 +16,7 @@ class OpenAIConnectorImpl implements LLMConnector {
       apiKey: config.apiKey,
       baseURL: config.baseURL,
       timeout: config.timeout,
+      dangerouslyAllowBrowser: config.dangerouslyAllowBrowser,
     });
   }
 
@@ -34,8 +35,24 @@ class OpenAIConnectorImpl implements LLMConnector {
         messages: [{ role: 'user', content: prompt }],
         ...(options.temperature !== undefined && { temperature: options.temperature }),
         ...(options.maxTokens !== undefined && { max_tokens: options.maxTokens }),
-        ...(options.responseFormat === 'json' && { response_format: { type: 'json_object' } }),
       };
+
+      if (
+        typeof options.responseFormat === 'object' &&
+        options.responseFormat !== null &&
+        options.responseFormat.type === 'json_schema'
+      ) {
+        body.response_format = {
+          type: 'json_schema',
+          json_schema: {
+            name: 'UISpecification',
+            strict: false,
+            schema: options.responseFormat.jsonSchema,
+          },
+        };
+      } else if (options.responseFormat === 'json') {
+        body.response_format = { type: 'json_object' };
+      }
 
       const response = await this.client.chat.completions.create(body, { signal });
 

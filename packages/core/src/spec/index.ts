@@ -1,5 +1,7 @@
 export { SPEC_VERSION } from './spec';
 
+export { uiSpecificationJsonSchema } from './spec.json-schema';
+
 export {
   componentSpecSchema,
   interactionSpecSchema,

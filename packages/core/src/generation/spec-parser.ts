@@ -4,6 +4,26 @@ import type { LLMResponse } from '../types';
 import type { SpecParser } from './generation.types';
 
 /**
+ * Recursively converts all `null` values to `undefined` in a parsed JSON tree.
+ *
+ * OpenAI Structured Outputs uses `anyOf: [{type}, {type: 'null'}]` for optional fields,
+ * so the LLM returns explicit `null` values. Zod `.optional()` accepts `undefined` but
+ * not `null`, so we normalise before validation.
+ */
+function nullToUndefined(value: unknown): unknown {
+  if (value === null) return undefined;
+  if (Array.isArray(value)) return value.map(nullToUndefined);
+  if (typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = nullToUndefined(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
  * Extracts JSON from LLM response content that may include markdown fences or surrounding text.
  */
 function extractJson(content: string): string {
@@ -43,8 +63,11 @@ export function createSpecParser(): SpecParser {
         );
       }
 
+      // Normalise null → undefined for OpenAI Structured Outputs compatibility
+      const normalised = nullToUndefined(parsed);
+
       // Validate against UISpecification schema
-      const result = uiSpecificationSchema.safeParse(parsed);
+      const result = uiSpecificationSchema.safeParse(normalised);
       if (!result.success) {
         return err(
           new FluiError(

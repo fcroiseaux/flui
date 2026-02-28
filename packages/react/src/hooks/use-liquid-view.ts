@@ -1,6 +1,7 @@
 import {
   type ComponentSpec,
   createGenerationOrchestrator,
+  createPromptBuilder,
   createTrace,
   createValidationPipeline,
   FLUI_E010,
@@ -151,6 +152,7 @@ export function useLiquidView(
 
       // Generate
       const orchestrator = createGenerationOrchestrator(resolvedGenerationConfig);
+      const promptBuilder = createPromptBuilder();
       const generationInput: GenerationInput = {
         intent: intentObject,
         context: {
@@ -174,9 +176,43 @@ export function useLiquidView(
       // Transition to validating
       updateState({ status: 'validating', rawSpec: genResult.value });
 
-      // Validate
-      const pipeline = createValidationPipeline(latestConfigRef.current?.validationConfig);
-      const validResult = await pipeline.validate(genResult.value, { registry: ctx.registry });
+      // Validate with retry: on failure, re-generate with error feedback prompt
+      const pipeline = createValidationPipeline({
+        ...latestConfigRef.current?.validationConfig,
+        retry: latestConfigRef.current?.validationConfig?.retry ?? { enabled: true, maxRetries: 2 },
+      });
+
+      const regenerate = async (retryPrompt: string, retrySignal?: AbortSignal) => {
+        const retryOrchestrator = createGenerationOrchestrator(resolvedGenerationConfig);
+        const retryInput: GenerationInput = {
+          intent: {
+            ...intentObject,
+            sanitizedText: retryPrompt,
+          },
+          context: generationInput.context,
+          registry: generationInput.registry,
+        };
+        const retryTrace = createTrace();
+        const retryResult = await retryOrchestrator.generate(retryInput, retryTrace, retrySignal);
+        if (!isError(retryResult)) {
+          trace.addStep({
+            module: 'validation',
+            operation: 'retryGeneration',
+            durationMs: 0,
+            metadata: { model: resolvedGenerationConfig.model },
+          });
+        }
+        return retryResult;
+      };
+
+      const validResult = await pipeline.validateWithRetry(
+        genResult.value,
+        { registry: ctx.registry },
+        regenerate,
+        trace,
+        signal,
+        promptBuilder.build(generationInput),
+      );
 
       if (signal.aborted) return;
 

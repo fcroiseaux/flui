@@ -11,7 +11,6 @@ async function sha256(input: string): Promise<string> {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   }
-  // @ts-expect-error -- Node.js fallback; types unavailable without @types/node
   const nodeCrypto: { createHash(alg: string): { update(data: string): { digest(enc: string): string } } } = await import('node:crypto');
   return nodeCrypto.createHash('sha256').update(input).digest('hex');
 }

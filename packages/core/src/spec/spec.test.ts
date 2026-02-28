@@ -177,14 +177,17 @@ describe('componentSpecSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('rejects unrecognized top-level fields', () => {
+  it('strips unrecognized top-level fields', () => {
     const result = componentSpecSchema.safeParse({
       id: 'btn-1',
       componentType: 'Btn',
       props: {},
       extraField: 'should be stripped',
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect((result.data as Record<string, unknown>)['extraField']).toBeUndefined();
+    }
   });
 
   it('provides field path in validation errors', () => {
@@ -223,14 +226,20 @@ describe('layoutSpecSchema', () => {
     }
   });
 
-  it('rejects invalid layout type', () => {
+  it('coerces invalid layout type to stack', () => {
     const result = layoutSpecSchema.safeParse({ type: 'table' });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.type).toBe('stack');
+    }
   });
 
-  it('rejects missing type field', () => {
+  it('defaults missing type field to stack', () => {
     const result = layoutSpecSchema.safeParse({ direction: 'vertical' });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.type).toBe('stack');
+    }
   });
 
   it('rejects invalid direction', () => {
@@ -260,12 +269,15 @@ describe('layoutSpecSchema', () => {
     }
   });
 
-  it('provides field path for invalid nested children', () => {
+  it('coerces invalid nested children layout type to stack', () => {
     const result = layoutSpecSchema.safeParse({
       type: 'grid',
       children: [{ type: 'invalid_type' }],
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.children?.[0]?.type).toBe('stack');
+    }
   });
 });
 
@@ -462,7 +474,7 @@ describe('uiSpecificationSchema', () => {
     const result = uiSpecificationSchema.safeParse({
       version: 123,
       components: 'not-array',
-      layout: {},
+      layout: 'not-object',
       interactions: [],
       metadata: {},
     });

@@ -5,7 +5,7 @@ import { FluiError } from '../errors/flui-error';
 import { err, isError, isOk, ok } from '../errors/result';
 import type { IntentObject } from '../intent/intent.types';
 import type { SerializedRegistry } from '../registry/registry.types';
-import { SPEC_VERSION } from '../spec';
+import { SPEC_VERSION, uiSpecificationJsonSchema } from '../spec';
 import type { LLMConnector, LLMResponse } from '../types';
 import { createTrace } from '../types';
 import type { GenerationConfig, GenerationInput } from './generation.types';
@@ -278,6 +278,39 @@ describe('GenerationOrchestrator', () => {
     expect(options?.model).toBe('gpt-4o');
     expect(options?.temperature).toBe(0.5);
     expect(options?.maxTokens).toBe(2048);
+    expect(options?.responseFormat).toEqual({
+      type: 'json_schema',
+      jsonSchema: uiSpecificationJsonSchema,
+    });
+  });
+
+  it('defaults to structured outputs with uiSpecificationJsonSchema when responseFormat is not set', async () => {
+    const config = makeConfig();
+    const orchestrator = createGenerationOrchestrator(config);
+    const trace = createTrace();
+    const input = makeInput();
+
+    await orchestrator.generate(input, trace);
+
+    const callArgs = vi.mocked(config.connector.generate).mock.calls[0];
+    const options = callArgs?.[1];
+    expect(options?.responseFormat).toEqual({
+      type: 'json_schema',
+      jsonSchema: uiSpecificationJsonSchema,
+    });
+  });
+
+  it('respects explicit responseFormat override from config', async () => {
+    const config = makeConfig();
+    config.responseFormat = 'json';
+    const orchestrator = createGenerationOrchestrator(config);
+    const trace = createTrace();
+    const input = makeInput();
+
+    await orchestrator.generate(input, trace);
+
+    const callArgs = vi.mocked(config.connector.generate).mock.calls[0];
+    const options = callArgs?.[1];
     expect(options?.responseFormat).toBe('json');
   });
 

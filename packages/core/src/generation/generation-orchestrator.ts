@@ -1,4 +1,5 @@
 import { err, FLUI_E010, FluiError, isError } from '../errors';
+import { uiSpecificationJsonSchema } from '../spec';
 import type { GenerationTrace, LLMRequestOptions } from '../types';
 import type { GenerationConfig, GenerationInput, GenerationOrchestrator } from './generation.types';
 import { createPromptBuilder } from './prompt-builder';
@@ -37,7 +38,10 @@ export function createGenerationOrchestrator(config: GenerationConfig): Generati
         model: config.model,
         temperature: config.temperature,
         maxTokens: config.maxTokens,
-        responseFormat: 'json',
+        responseFormat: config.responseFormat ?? {
+          type: 'json_schema',
+          jsonSchema: uiSpecificationJsonSchema,
+        },
       };
 
       const connectorStart = Date.now();
