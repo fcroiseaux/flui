@@ -35,7 +35,7 @@ export async function setupFlui(identityOverride?: {
   if (apiKey) {
     try {
       const { createOpenAIConnector } = await import('@flui/openai');
-      connector = createOpenAIConnector({ apiKey });
+      connector = createOpenAIConnector({ apiKey, dangerouslyAllowBrowser: true });
       isLiveMode = true;
     } catch {
       console.warn('Failed to load @flui/openai, falling back to MockConnector');

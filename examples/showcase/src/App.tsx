@@ -1,6 +1,6 @@
 import type { GenerationTrace, UISpecification } from '@flui/core';
 import { DebugOverlay, FluiProvider, LiquidView, useFluidDebug } from '@flui/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { SetupResult } from './flui-setup';
 import { setupFlui } from './flui-setup';
@@ -51,14 +51,11 @@ function MetricsBar({ setup }: MetricsBarProps) {
 interface ScenarioRunnerProps {
   scenario: Scenario;
   setup: SetupResult;
-  role: string;
 }
 
-function ScenarioRunner({ scenario, setup, role }: ScenarioRunnerProps) {
+function ScenarioRunner({ scenario, setup }: ScenarioRunnerProps) {
   const [currentSpec, setCurrentSpec] = useState<UISpecification | null>(null);
   const [traces, setTraces] = useState<GenerationTrace[]>([]);
-  const intentKeyRef = useRef(0);
-  const [intentKey, setIntentKey] = useState(0);
 
   const debug = useFluidDebug({
     defaultOpen: false,
@@ -68,37 +65,31 @@ function ScenarioRunner({ scenario, setup, role }: ScenarioRunnerProps) {
     defaultTab: 'spec',
   });
 
-  // Enqueue mock and trigger generation when scenario or role changes
-  useEffect(() => {
-    if (setup.mockConnector) {
-      setup.mockConnector.reset();
-      scenario.enqueue(setup.mockConnector, role);
-    }
-    intentKeyRef.current += 1;
-    setIntentKey(intentKeyRef.current);
-  }, [scenario, role, setup.mockConnector]);
-
   const handleStateChange = useCallback(
-    (state: { status: string; spec?: UISpecification; trace?: GenerationTrace }) => {
+    (state: { status: string; spec?: UISpecification; trace?: GenerationTrace; error?: unknown }) => {
+      console.log('[flui] state →', state.status, state);
       if (state.status === 'rendering' && state.spec) {
         setCurrentSpec(state.spec);
       }
       if (state.status === 'generating' && state.trace) {
         setTraces((prev) => [...prev, state.trace!]);
       }
+      if (state.status === 'error') {
+        const err = state.error as { context?: { zodErrors?: unknown[] } };
+        console.error('[flui] generation error:', state.error);
+        if (err.context?.zodErrors) {
+          console.error('[flui] zod errors:', JSON.stringify(err.context.zodErrors, null, 2));
+        }
+      }
     },
     [],
   );
-
-  // Use intentKey to force re-mount of LiquidView when we need re-generation
-  const intentWithKey = `${scenario.intent} [${intentKey}]`;
 
   return (
     <>
       <div className="liquid-view-container">
         <LiquidView
-          key={intentKey}
-          intent={intentWithKey}
+          intent={scenario.intent}
           fallback={<LoadingFallback />}
           onStateChange={handleStateChange}
         />
@@ -112,9 +103,20 @@ export function App() {
   const [setup, setSetup] = useState<SetupResult | null>(null);
   const [activeScenario, setActiveScenario] = useState<Scenario>(scenarios[0]!);
   const [activeRole, setActiveRole] = useState('admin');
+  // genKey gates rendering: null = not ready, number = LiquidView can mount.
+  // The mock is enqueued BEFORE genKey is set, so the queue is always populated
+  // when LiquidView's effect fires.
+  const [genKey, setGenKey] = useState<number | null>(null);
 
   useEffect(() => {
-    setupFlui().then(setSetup);
+    setupFlui().then((result) => {
+      // Enqueue first scenario's mock BEFORE rendering ScenarioRunner
+      if (result.mockConnector) {
+        scenarios[0]!.enqueue(result.mockConnector);
+      }
+      setSetup(result);
+      setGenKey(1);
+    });
   }, []);
 
   if (!setup) {
@@ -127,10 +129,23 @@ export function App() {
   }
 
   const handleScenarioSelect = (scenario: Scenario) => {
-    setActiveScenario(scenario);
-    if (!scenario.supportsRoles) {
-      setActiveRole('admin');
+    // Enqueue mock response synchronously in the handler, BEFORE React re-renders
+    if (setup.mockConnector) {
+      setup.mockConnector.reset();
+      scenario.enqueue(setup.mockConnector);
     }
+    setActiveScenario(scenario);
+    setActiveRole('admin');
+    setGenKey((prev) => (prev ?? 0) + 1);
+  };
+
+  const handleRoleChange = (role: string) => {
+    if (setup.mockConnector) {
+      setup.mockConnector.reset();
+      activeScenario.enqueue(setup.mockConnector, role);
+    }
+    setActiveRole(role);
+    setGenKey((prev) => (prev ?? 0) + 1);
   };
 
   return (
@@ -181,7 +196,7 @@ export function App() {
                   key={role}
                   type="button"
                   className={`role-btn ${activeRole === role ? 'active' : ''}`}
-                  onClick={() => setActiveRole(role)}
+                  onClick={() => handleRoleChange(role)}
                 >
                   {role}
                 </button>
@@ -189,12 +204,13 @@ export function App() {
             </div>
           )}
 
-          <ScenarioRunner
-            key={activeScenario.id}
-            scenario={activeScenario}
-            setup={setup}
-            role={activeRole}
-          />
+          {genKey !== null && (
+            <ScenarioRunner
+              key={genKey}
+              scenario={activeScenario}
+              setup={setup}
+            />
+          )}
         </main>
       </div>
     </FluiProvider>

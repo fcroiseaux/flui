@@ -86,7 +86,7 @@ export function registerComponents(registry: ComponentRegistry): void {
     },
     {
       name: 'MetricCard',
-      category: 'data',
+      category: 'display',
       description: 'Displays a metric value with label and trend indicator',
       accepts: z.object({
         label: z.string(),

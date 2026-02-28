@@ -7,23 +7,24 @@ function buildSpec() {
     .addComponent({
       id: 'heading-1',
       componentType: 'Heading',
-      props: { level: 2, text: 'Interactive Data Filter' },
+      props: { level: 2, text: 'Interactive Data Filter', 'aria-live': 'polite' },
     })
     .addComponent({
       id: 'text-intro',
       componentType: 'Text',
-      props: { text: 'Type in the search field below — the InteractionSpec wires the input event directly to the data table, updating it in real time.' },
+      props: { text: 'Type in the search field below — the InteractionSpec wires the input event directly to the data table, updating it in real time.', 'aria-live': 'polite' },
     })
     .addComponent({
       id: 'search-input',
       componentType: 'Input',
-      props: { label: 'Search', placeholder: 'Filter by name...', type: 'text' },
+      props: { label: 'Search', placeholder: 'Filter by name...', type: 'text', 'aria-label': 'Search components' },
     })
     .addComponent({
       id: 'category-select',
       componentType: 'Select',
       props: {
         label: 'Category',
+        'aria-label': 'Filter by category',
         options: [
           { value: 'all', label: 'All Categories' },
           { value: 'display', label: 'Display' },
@@ -37,6 +38,7 @@ function buildSpec() {
       id: 'results-table',
       componentType: 'DataTable',
       props: {
+        'aria-label': 'Component registry',
         columns: ['Name', 'Category', 'Description'],
         rows: [
           { Name: 'Heading', Category: 'display', Description: 'Renders h1-h6 elements' },
@@ -54,7 +56,7 @@ function buildSpec() {
     .addComponent({
       id: 'badge-wired',
       componentType: 'StatusBadge',
-      props: { text: 'Interactions Active', status: 'info' },
+      props: { text: 'Interactions Active', status: 'info', 'aria-live': 'polite' },
     })
     .addInteraction({
       source: 'search-input',

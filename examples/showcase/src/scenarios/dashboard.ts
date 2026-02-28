@@ -7,32 +7,32 @@ function buildSpec() {
     .addComponent({
       id: 'heading-1',
       componentType: 'Heading',
-      props: { level: 2, text: 'System Dashboard' },
+      props: { level: 2, text: 'System Dashboard', 'aria-live': 'polite' },
     })
     .addComponent({
       id: 'badge-status',
       componentType: 'StatusBadge',
-      props: { text: 'All Systems Operational', status: 'success' },
+      props: { text: 'All Systems Operational', status: 'success', 'aria-live': 'polite' },
     })
     .addComponent({
       id: 'metric-users',
       componentType: 'MetricCard',
-      props: { label: 'Active Users', value: '12,847', trend: 'up' },
+      props: { label: 'Active Users', value: '12,847', trend: 'up', 'aria-label': 'Active Users: 12,847', 'aria-live': 'polite' },
     })
     .addComponent({
       id: 'metric-requests',
       componentType: 'MetricCard',
-      props: { label: 'API Requests', value: '1.2M', trend: 'up' },
+      props: { label: 'API Requests', value: '1.2M', trend: 'up', 'aria-label': 'API Requests: 1.2M', 'aria-live': 'polite' },
     })
     .addComponent({
       id: 'metric-latency',
       componentType: 'MetricCard',
-      props: { label: 'Avg Latency', value: '42ms', trend: 'down' },
+      props: { label: 'Avg Latency', value: '42ms', trend: 'down', 'aria-label': 'Average Latency: 42ms', 'aria-live': 'polite' },
     })
     .addComponent({
       id: 'metric-errors',
       componentType: 'MetricCard',
-      props: { label: 'Error Rate', value: '0.03%', trend: 'flat' },
+      props: { label: 'Error Rate', value: '0.03%', trend: 'flat', 'aria-label': 'Error Rate: 0.03%', 'aria-live': 'polite' },
     })
     .addComponent({
       id: 'card-context',
@@ -42,7 +42,7 @@ function buildSpec() {
         {
           id: 'text-context',
           componentType: 'Text',
-          props: { text: 'The context engine resolved your identity (role, permissions, expertise) and environment (device, viewport, connection) to tailor this layout.' },
+          props: { text: 'The context engine resolved your identity (role, permissions, expertise) and environment (device, viewport, connection) to tailor this layout.', 'aria-live': 'polite' },
         },
       ],
     })
