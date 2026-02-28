@@ -160,6 +160,116 @@ Flui is built on three pillars:
 
 **Observability** — Structured traces for every generation (intent, context, component selection, validation result, latency). Pluggable transports, PII redaction, and a React `<DebugOverlay>` for development.
 
+### Generation Pipeline
+
+```mermaid
+flowchart TB
+    subgraph Input
+        A[Intent] --> B[Parse Intent]
+        C[Context Providers] --> D[Resolve Context]
+    end
+
+    B --> E[Build Cache Key]
+    D --> E
+
+    E --> F{Cache Hit?}
+    F -- Yes --> G[Return Cached Spec]
+    F -- No --> H{In-Flight Prefetch?}
+
+    H -- Yes --> I[Await Existing Promise]
+    I --> G
+
+    H -- No --> J{Policy Decision}
+    J -- show-fallback --> K[Fallback UI]
+    J -- generate --> L[LLM Connector]
+
+    L --> M[Parse JSON Response]
+    M --> N[Validation Pipeline]
+
+    subgraph Validation
+        N --> N1[Schema Check]
+        N1 --> N2[Registry Check]
+        N2 --> N3[A11y WCAG 2.1 AA]
+        N3 --> N4[Data Authorization]
+    end
+
+    N4 -- Pass --> O[Write to Cache]
+    N4 -- Fail --> P{Retry?}
+    P -- Yes --> Q[Re-generate with Error Feedback]
+    Q --> M
+    P -- No --> K
+
+    O --> R[UISpecification]
+    R --> S[Render Components]
+
+    style G fill:#2d8a4e,color:#fff
+    style S fill:#2d8a4e,color:#fff
+    style K fill:#c0392b,color:#fff
+    style L fill:#2980b9,color:#fff
+```
+
+### Prefetch & Cache Flow
+
+```mermaid
+flowchart LR
+    subgraph Background
+        P1[usePrefetch A] --> PF[prefetch]
+        P2[usePrefetch B] --> PF
+        P3[usePrefetch C] --> PF
+    end
+
+    PF --> DD{Same Cache Key?}
+    DD -- Yes --> DEDUP[Deduplicate: Share Promise]
+    DD -- No --> PIPE[Generation Pipeline]
+
+    PIPE --> CACHE[(3-Level Cache)]
+    DEDUP --> CACHE
+
+    subgraph "Display Time"
+        LV[LiquidView] --> GEN[generate]
+        GEN --> CK{Cache Hit?}
+        CK -- Yes --> INSTANT[Instant Render]
+        CK -- No --> INF{In-Flight?}
+        INF -- Yes --> AWAIT[Await & Render]
+        INF -- No --> NEW[New LLM Call]
+    end
+
+    CACHE -.-> CK
+
+    subgraph Cache Levels
+        CACHE --> L1[L1 Memory LRU]
+        CACHE --> L2[L2 SessionStorage]
+        CACHE --> L3[L3 IndexedDB]
+    end
+
+    style INSTANT fill:#2d8a4e,color:#fff
+    style AWAIT fill:#2d8a4e,color:#fff
+    style DEDUP fill:#8e44ad,color:#fff
+```
+
+### LiquidView Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> idle
+    idle --> generating : intent provided
+    generating --> validating : LLM response received
+    validating --> rendering : validation passed
+    validating --> generating : retry (self-correction)
+    generating --> error : LLM failure
+    validating --> error : validation failure
+    error --> generating : intent changes
+    rendering --> generating : intent changes
+    generating --> idle : intent cleared
+    rendering --> idle : intent cleared
+
+    state error {
+        [*] --> fallback_ui
+    }
+```
+
+Each state is a discriminated union — strict, type-safe, no states skipped.
+
 ### UISpecification
 
 The LLM generates a declarative JSON spec — never executable code:
@@ -173,16 +283,6 @@ interface UISpecification {
   metadata: UISpecificationMetadata;
 }
 ```
-
-### LiquidView Lifecycle
-
-```
-idle → generating → validating → rendering
-                                     ↓
-                                  error (with fallback)
-```
-
-Each state is a discriminated union — strict, type-safe, no states skipped.
 
 ### Additional Subsystems
 
